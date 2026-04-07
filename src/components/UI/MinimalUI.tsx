@@ -1,177 +1,314 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import type { StepDef, StepPhase, HeadRotation } from "../../types";
 
 interface Props {
-  alignmentProgress: number;
-  isFormed: boolean;
-  headRotation: { roll: number };
+  activeStep: StepDef;
+  phase: StepPhase;
+  holdProgress: number;
+  resonanceProgress: number;
+  stepIndex: number;
+  totalSteps: number;
+  headRotation: HeadRotation;
 }
 
-// ── Design tokens — warm neutral / Claude palette ────────────────────
-const warm = "rgba(180,95,65,";     // terracotta-amber (darker for light bg)
-const clay = "rgba(130,65,45,";     // deep clay
-const cream = "rgba(100,60,40,";    // warm dark brown (text on light bg)
+// ── Palette ───────────────────────────────────────────────────────────
+const W  = "rgba(180,95,65,";   // warm terracotta
+const CL = "rgba(130,65,45,";   // clay
+const CR = "rgba(100,60,40,";   // cream-dark (text)
 
-function pad2(n: number) {
-  return String(Math.floor(n)).padStart(2, "0");
+// ── Hold ring geometry ────────────────────────────────────────────────
+const R = 52;
+const CIRC = 2 * Math.PI * R;
+
+// ── Direction arrow (SVG, inside guide circle) ────────────────────────
+function Arrow({ dir, faded }: { dir: StepDef["arrowDir"]; faded: boolean }) {
+  const op = faded ? 0.25 : 0.85;
+  const rot = { right: 90, left: -90, up: 0, down: 180 }[dir];
+  return (
+    <svg
+      width="32" height="32"
+      viewBox="0 0 32 32"
+      style={{
+        position: "absolute", top: "50%", left: "50%",
+        transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+        opacity: op,
+        transition: "opacity 0.4s",
+      }}
+    >
+      {/* shaft */}
+      <line x1="16" y1="24" x2="16" y2="10" stroke={`rgba(180,95,65,1)`} strokeWidth="2" strokeLinecap="round" />
+      {/* arrowhead */}
+      <polyline points="10,15 16,8 22,15" fill="none" stroke={`rgba(180,95,65,1)`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
-function formatTime(s: number) {
-  return `${pad2(s / 60)}:${pad2(s % 60)}`;
+// ── Tilt guide for roll steps (mini horizon dial) ─────────────────────
+function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: number; inZone: boolean }) {
+  return (
+    <div style={{
+      position: "fixed", top: "52px", left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 100, pointerEvents: "none",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
+    }}>
+      <div style={{ position: "relative", width: "44px", height: "44px" }}>
+        {/* ring */}
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          border: `1px solid ${CR}0.2)`,
+          background: "rgba(255,248,240,0.45)",
+          backdropFilter: "blur(6px)",
+        }} />
+        {/* target ghost */}
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          width: "26px", height: "1px",
+          marginLeft: "-13px", marginTop: "-0.5px",
+          background: `${CL}0.3)`,
+          transform: `rotate(${targetRoll}deg)`,
+        }} />
+        {/* live bar */}
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          width: "30px", height: "1.5px",
+          marginLeft: "-15px", marginTop: "-0.75px",
+          borderRadius: "2px",
+          background: inZone
+            ? `linear-gradient(90deg,${W}0.3),${W}0.9),${W}0.3))`
+            : `linear-gradient(90deg,${CR}0.1),${CR}0.55),${CR}0.1))`,
+          transform: `rotate(${roll}deg)`,
+          transition: "background 0.4s",
+        }} />
+        {/* pivot */}
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          width: "5px", height: "5px",
+          marginLeft: "-2.5px", marginTop: "-2.5px",
+          borderRadius: "50%",
+          background: inZone ? `${W}0.9)` : `${CR}0.35)`,
+          boxShadow: inZone ? `0 0 6px ${W}0.55)` : "none",
+          transition: "all 0.4s",
+        }} />
+      </div>
+      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: inZone ? `${W}0.75)` : `${CR}0.3)` }}>
+        {roll >= 0 ? "+" : ""}{roll.toFixed(1)}°
+      </span>
+    </div>
+  );
 }
 
-export default function MinimalUI({ alignmentProgress, isFormed, headRotation }: Props) {
-  const [elapsed, setElapsed] = useState(0);
+export default function MinimalUI({
+  activeStep, phase, holdProgress, resonanceProgress,
+  stepIndex, totalSteps, headRotation,
+}: Props) {
   const orbRotRef = useRef(0);
   const orbRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
 
-  // Session timer
-  useEffect(() => {
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const inZone = phase === "hold" || phase === "resonance";
+  const isResonating = phase === "resonance";
 
-  // Aura Orb animation loop (rAF, no React re-renders)
+  // Orb rAF loop
   useEffect(() => {
     const tick = () => {
       orbRotRef.current += 0.4;
       if (orbRef.current) {
-        // Warm palette: terracotta (18°) → amber (35°) → warm peach (28°)
-        const hue1 = isFormed ? 35 : 18 + alignmentProgress * 12;
-        const hue2 = isFormed ? 28 : 15;
-        const sat = 55 + alignmentProgress * 25;
-        const bright = 0.55 + alignmentProgress * 0.35;
+        const hue1 = isResonating ? 35 : 18 + holdProgress * 12;
+        const hue2 = isResonating ? 28 : 15;
+        const sat  = 55 + holdProgress * 25;
+        const glow = 0.55 + holdProgress * 0.35;
         orbRef.current.style.background = `conic-gradient(
           from ${orbRotRef.current}deg,
-          hsl(${hue1}, ${sat}%, 52%),
-          hsl(${hue2}, ${sat - 10}%, 38%),
-          hsl(${hue1 + 15}, ${sat}%, 48%),
-          hsl(${hue1}, ${sat}%, 52%)
+          hsl(${hue1},${sat}%,52%),
+          hsl(${hue2},${sat - 10}%,38%),
+          hsl(${hue1 + 15},${sat}%,48%),
+          hsl(${hue1},${sat}%,52%)
         )`;
         orbRef.current.style.boxShadow = `
-          0 0 ${12 + alignmentProgress * 24}px ${warm}${bright}),
-          inset 0 0 ${8 + alignmentProgress * 16}px ${warm}0.3)
+          0 0 ${12 + holdProgress * 24}px ${W}${glow}),
+          inset 0 0 ${8 + holdProgress * 16}px ${W}0.3)
         `;
       }
       animRef.current = requestAnimationFrame(tick);
     };
     animRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animRef.current);
-  }, [alignmentProgress, isFormed]);
+  }, [holdProgress, isResonating]);
 
-  const aligned = alignmentProgress > 0.7 || isFormed;
-  const roll = headRotation.roll;
+  // How many rings to show during resonance
+  const ringScale = 1 + resonanceProgress * 3.5;
+  const ringOpacity = isResonating ? Math.max(0, 1 - resonanceProgress) : 0;
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,200;0,300;1,300&display=swap');
-
-        @keyframes orb-spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes pulse-glow {
-          0%,100% { opacity: 0.7; }
-          50%      { opacity: 1; }
-        }
         @keyframes breathe {
-          0%,100% { opacity: 0.4; }
-          50%      { opacity: 0.85; }
+          0%,100% { opacity: 0.45; }
+          50%      { opacity: 0.9; }
+        }
+        @keyframes ring-pulse {
+          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.8; }
+          100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
         }
       `}</style>
 
-      {/* ── TOP BAR ───────────────────────────────────────────────── */}
+      {/* ── TOP BAR ─────────────────────────────────────────────── */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        height: "42px",
-        display: "flex", alignItems: "center",
-        padding: "0 2rem",
-        pointerEvents: "none",
+        height: "42px", display: "flex", alignItems: "center",
+        padding: "0 2rem", pointerEvents: "none",
       }}>
-        {/* Left warm line */}
-        <div style={{
-          flex: 1, height: "0.5px",
-          background: `linear-gradient(90deg, transparent, ${warm}0.4))`,
-        }} />
-
-        {/* Center label */}
-        <div style={{
-          padding: "0 20px",
-          display: "flex", alignItems: "center", gap: "10px",
-        }}>
-          <span style={{
-            fontSize: "9px",
-            letterSpacing: "0.32em",
-            color: `${cream}0.55)`,
-            fontFamily: "'DM Sans', sans-serif",
-            fontWeight: 300,
-          }}>
-            ALIGNMENT SESSION
+        <div style={{ flex: 1, height: "0.5px", background: `linear-gradient(90deg,transparent,${W}0.3))` }} />
+        <div style={{ padding: "0 20px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "9px", letterSpacing: "0.3em", color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300 }}>
+            NECK · SPINE RESET
           </span>
-          <span style={{
-            fontSize: "9px",
-            color: `${warm}0.35)`,
-            fontWeight: 200,
-          }}>
-            •
-          </span>
-          <span style={{
-            fontSize: "10px",
-            letterSpacing: "0.15em",
-            color: `${warm}${aligned ? "0.9" : "0.45"})`,
-            fontFamily: "monospace",
-            fontWeight: 300,
-            transition: "color 0.6s",
-          }}>
-            {formatTime(elapsed)}
+          <span style={{ fontSize: "9px", color: `${W}0.35)` }}>•</span>
+          <span style={{ fontSize: "9px", letterSpacing: "0.2em", color: `${CR}0.4)`, fontFamily: "monospace" }}>
+            {stepIndex + 1} / {totalSteps}
           </span>
         </div>
+        <div style={{ flex: 1, height: "0.5px", background: `linear-gradient(90deg,${W}0.3),transparent)` }} />
+      </div>
 
-        {/* Right warm line */}
-        <div style={{
-          flex: 1, height: "0.5px",
-          background: `linear-gradient(90deg, ${warm}0.4), transparent)`,
+      {/* ── HORIZON DIAL (roll steps only) ──────────────────────── */}
+      {activeStep.axis === "roll" && (
+        <HorizonDial
+          roll={headRotation.roll}
+          targetRoll={activeStep.target}
+          inZone={inZone}
+        />
+      )}
+
+      {/* ── RESONANCE BURST RINGS ───────────────────────────────── */}
+      {isResonating && [0, 1, 2].map((i) => (
+        <div key={i} style={{
+          position: "fixed", top: "50%", left: "50%",
+          width: "120px", height: "120px",
+          marginLeft: "-60px", marginTop: "-60px",
+          borderRadius: "50%",
+          border: `1.5px solid ${W}${(0.7 - i * 0.15).toFixed(2)})`,
+          animation: `ring-pulse 1.6s ease-out ${i * 0.28}s forwards`,
+          pointerEvents: "none", zIndex: 200,
         }} />
-      </div>
+      ))}
 
-      {/* ── STATUS (bottom center) ────────────────────────────────── */}
+      {/* ── CENTRAL GUIDE ───────────────────────────────────────── */}
       <div style={{
-        position: "fixed", bottom: "2.5rem", left: 0, right: 0,
-        display: "flex", flexDirection: "column", alignItems: "center",
-        gap: "6px", zIndex: 100, pointerEvents: "none",
+        position: "fixed", top: "50%", left: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 100, pointerEvents: "none",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "18px",
       }}>
-        <p style={{
-          margin: 0,
-          fontSize: "11px",
-          letterSpacing: "0.22em",
-          color: aligned ? `${warm}0.85)` : `${cream}0.3)`,
-          fontFamily: "'DM Serif Display', serif",
-          fontStyle: "italic",
-          animation: "breathe 4s ease-in-out infinite",
-          transition: "color 0.8s",
-        }}>
-          {isFormed
-            ? "Resonance achieved — hold"
-            : aligned
-              ? "Alignment detected — maintain"
-              : "Tilt your head gently to the right"}
-        </p>
+        {/* Ring + arrow */}
+        <div style={{ position: "relative", width: "120px", height: "120px" }}>
 
-        {/* Roll micro-readout */}
-        <span style={{
-          fontSize: "7px",
-          letterSpacing: "0.18em",
-          color: `${cream}0.2)`,
-          fontFamily: "monospace",
-        }}>
-          ROLL {roll >= 0 ? "+" : ""}{roll.toFixed(1)}°
-          {"  ·  "}
-          {Math.round(alignmentProgress * 100)}%
-        </span>
+          {/* SVG: track + hold fill ring */}
+          <svg width="120" height="120" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+            {/* track */}
+            <circle cx="60" cy="60" r={R} fill="none" stroke={`${W}0.1)`} strokeWidth="1.5" />
+            {/* hold progress arc */}
+            <circle
+              cx="60" cy="60" r={R} fill="none"
+              stroke={isResonating ? `${W}0.9)` : inZone ? `${W}0.65)` : `${W}0.18)`}
+              strokeWidth={isResonating ? "2.5" : inZone ? "2" : "1"}
+              strokeDasharray={`${CIRC * holdProgress} ${CIRC}`}
+              strokeLinecap="round"
+              style={{ transition: "stroke 0.4s, stroke-width 0.3s" }}
+            />
+          </svg>
+
+          {/* Resonance scale ring (expands) */}
+          <div style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: "96px", height: "96px",
+            marginLeft: "-48px", marginTop: "-48px",
+            borderRadius: "50%",
+            border: `1px solid ${W}${ringOpacity.toFixed(2)})`,
+            transform: `scale(${isResonating ? ringScale : 1})`,
+            transition: isResonating ? "transform 0.05s linear, opacity 0.05s" : "none",
+            opacity: ringOpacity,
+            pointerEvents: "none",
+          }} />
+
+          {/* Inner frosted disc */}
+          <div style={{
+            position: "absolute", inset: "12px", borderRadius: "50%",
+            background: inZone
+              ? `rgba(255,240,228,${0.45 + holdProgress * 0.3})`
+              : "rgba(255,248,240,0.28)",
+            backdropFilter: "blur(5px)",
+            border: `0.5px solid ${W}${inZone ? 0.25 : 0.08})`,
+            transition: "all 0.5s",
+          }} />
+
+          {/* Direction arrow — fades when holding */}
+          {!isResonating && (
+            <Arrow dir={activeStep.arrowDir} faded={phase === "hold" && holdProgress > 0.4} />
+          )}
+
+          {/* Resonance checkmark */}
+          {isResonating && (
+            <div style={{
+              position: "absolute", top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              fontSize: "26px", color: `${W}0.9)`,
+            }}>✦</div>
+          )}
+        </div>
+
+        {/* Label */}
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "5px" }}>
+          <span style={{
+            fontSize: "13px", letterSpacing: "0.14em",
+            color: inZone ? `${W}0.9)` : `${CR}0.55)`,
+            fontFamily: "'DM Serif Display', serif", fontStyle: "italic",
+            animation: phase === "guide" ? "breathe 3s ease-in-out infinite" : "none",
+            transition: "color 0.5s",
+          }}>
+            {isResonating ? "共振" : phase === "hold" ? "保持" : activeStep.label}
+          </span>
+          <span style={{
+            fontSize: "8px", letterSpacing: "0.28em",
+            color: `${CR}0.3)`, fontFamily: "monospace",
+            opacity: isResonating ? 0 : 1, transition: "opacity 0.3s",
+          }}>
+            {phase === "hold"
+              ? `HOLD · ${Math.round(holdProgress * 100)}%`
+              : activeStep.cue.toUpperCase()}
+          </span>
+        </div>
       </div>
 
-      {/* ── AURA ORB (bottom right) ───────────────────────────────── */}
+      {/* ── STEP PROGRESS DOTS (bottom center) ─────────────────── */}
+      <div style={{
+        position: "fixed", bottom: "2rem", left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 100, pointerEvents: "none",
+        display: "flex", gap: "8px", alignItems: "center",
+      }}>
+        {Array.from({ length: totalSteps }).map((_, i) => {
+          const done = i < stepIndex || (i === stepIndex && isResonating);
+          const active = i === stepIndex;
+          return (
+            <div key={i} style={{
+              width: active && !done ? "20px" : "6px",
+              height: "6px",
+              borderRadius: "3px",
+              background: done
+                ? `${W}0.75)`
+                : active
+                  ? `${W}${0.35 + holdProgress * 0.55})`
+                  : `${CR}0.18)`,
+              transition: "all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+            }} />
+          );
+        })}
+      </div>
+
+      {/* ── AURA ORB (bottom right) ─────────────────────────────── */}
       <div style={{
         position: "fixed", bottom: "1.8rem", right: "1.8rem",
         zIndex: 100, pointerEvents: "none",
@@ -180,158 +317,31 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
         backdropFilter: "blur(10px)",
         borderRadius: "56px",
         padding: "14px 14px 8px",
-        border: `0.5px solid ${warm}0.2)`,
+        border: `0.5px solid ${W}0.2)`,
       }}>
-        {/* outer glow ring */}
-        <div style={{
-          position: "relative",
-          width: "64px", height: "64px",
-        }}>
+        <div style={{ position: "relative", width: "64px", height: "64px" }}>
           <div style={{
-            position: "absolute", inset: "-12px",
-            borderRadius: "50%",
-            background: `radial-gradient(circle, ${warm}${(0.08 + alignmentProgress * 0.18).toFixed(2)}) 0%, transparent 70%)`,
-            filter: "blur(8px)",
-            transition: "background 0.6s",
+            position: "absolute", inset: "-12px", borderRadius: "50%",
+            background: `radial-gradient(circle,${W}${(0.07 + holdProgress * 0.18).toFixed(2)}) 0%,transparent 70%)`,
+            filter: "blur(8px)", transition: "background 0.6s",
           }} />
-          {/* orb itself */}
-          <div
-            ref={orbRef}
-            style={{
-              width: "64px", height: "64px",
-              borderRadius: "50%",
-              opacity: 0.85,
-              filter: "blur(0.5px)",
-              transition: "opacity 0.5s",
-            }}
-          />
-          {/* glassy overlay */}
+          <div ref={orbRef} style={{ width: "64px", height: "64px", borderRadius: "50%", opacity: 0.85, filter: "blur(0.5px)" }} />
           <div style={{
-            position: "absolute", inset: 0,
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 30%, rgba(255,240,225,0.20) 0%, transparent 60%)",
+            position: "absolute", inset: 0, borderRadius: "50%",
+            background: "radial-gradient(circle at 35% 30%,rgba(255,240,225,0.18) 0%,transparent 60%)",
           }} />
-          {/* border */}
           <div style={{
-            position: "absolute", inset: 0,
-            borderRadius: "50%",
-            border: `0.5px solid ${warm}${aligned ? "0.5" : "0.2"})`,
+            position: "absolute", inset: 0, borderRadius: "50%",
+            border: `0.5px solid ${W}${inZone ? "0.5" : "0.18"})`,
             transition: "border-color 0.6s",
           }} />
         </div>
-
         <span style={{
-          fontSize: "7px",
-          letterSpacing: "0.2em",
-          color: aligned ? `${warm}0.7)` : `${cream}0.2)`,
-          fontFamily: "monospace",
+          fontSize: "7px", letterSpacing: "0.2em", fontFamily: "monospace",
+          color: inZone ? `${W}0.7)` : `${CR}0.22)`,
           transition: "color 0.6s",
         }}>
-          {isFormed ? "RESONANT" : aligned ? "ALIGNED" : "TRACKING"}
-        </span>
-      </div>
-
-      {/* ── HORIZON INDICATOR (artificial horizon dial) ──── */}
-      <div style={{
-        position: "fixed", top: "52px", left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 100, pointerEvents: "none",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "5px",
-      }}>
-        {/* Dial */}
-        <div style={{
-          position: "relative",
-          width: "44px", height: "44px",
-        }}>
-          {/* Outer ring */}
-          <div style={{
-            position: "absolute", inset: 0,
-            borderRadius: "50%",
-            border: `1px solid ${cream}0.3)`,
-            background: "rgba(255,248,240,0.45)",
-            backdropFilter: "blur(6px)",
-          }} />
-
-          {/* Target ghost line at 18° */}
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            width: "28px", height: "1px",
-            marginLeft: "-14px", marginTop: "-0.5px",
-            background: `${clay}0.35)`,
-            borderRadius: "1px",
-            transform: `rotate(18deg)`,
-            transformOrigin: "center",
-          }} />
-          {/* Target dots at ends of ghost line */}
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            width: "3px", height: "3px",
-            borderRadius: "50%",
-            background: `${clay}0.5)`,
-            transform: `rotate(18deg) translateX(12px)`,
-            transformOrigin: "left center",
-            marginTop: "-1.5px",
-          }} />
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            width: "3px", height: "3px",
-            borderRadius: "50%",
-            background: `${clay}0.5)`,
-            transform: `rotate(198deg) translateX(12px)`,
-            transformOrigin: "left center",
-            marginTop: "-1.5px",
-          }} />
-
-          {/* Live horizon bar — rotates with head roll */}
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            width: "30px", height: "1.5px",
-            marginLeft: "-15px", marginTop: "-0.75px",
-            background: aligned
-              ? `linear-gradient(90deg, ${warm}0.3), ${warm}0.95), ${warm}0.3))`
-              : `linear-gradient(90deg, ${cream}0.15), ${cream}0.7), ${cream}0.15))`,
-            borderRadius: "2px",
-            transform: `rotate(${roll}deg)`,
-            transformOrigin: "center",
-            transition: "background 0.5s",
-          }} />
-
-          {/* Center pivot dot */}
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            width: "5px", height: "5px",
-            marginLeft: "-2.5px", marginTop: "-2.5px",
-            borderRadius: "50%",
-            background: aligned ? `${warm}0.9)` : `${cream}0.5)`,
-            boxShadow: aligned ? `0 0 6px ${warm}0.6)` : "none",
-            transition: "background 0.4s, box-shadow 0.4s",
-          }} />
-
-          {/* Aligned glow ring */}
-          {aligned && (
-            <div style={{
-              position: "absolute", inset: 0,
-              borderRadius: "50%",
-              boxShadow: `0 0 10px ${warm}0.25)`,
-              border: `1px solid ${warm}0.4)`,
-            }} />
-          )}
-        </div>
-
-        {/* Degree readout */}
-        <span style={{
-          fontSize: "7px",
-          letterSpacing: "0.15em",
-          color: aligned ? `${warm}0.8)` : `${cream}0.35)`,
-          fontFamily: "monospace",
-          transition: "color 0.5s",
-        }}>
-          {roll >= 0 ? "+" : ""}{roll.toFixed(1)}°
+          {isResonating ? "RESONANT" : inZone ? "ALIGNED" : "TRACKING"}
         </span>
       </div>
     </>

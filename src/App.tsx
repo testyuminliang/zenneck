@@ -4,19 +4,19 @@ import { Preload } from "@react-three/drei";
 import ResonanceVortex from "./components/ResonanceVortex";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
+import { useSequence } from "./hooks/useSequence";
+import type { HeadRotation } from "./types";
 import "./App.css";
-
-interface HeadRotation {
-  yaw: number;
-  pitch: number;
-  roll: number;
-}
 
 function App() {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
-  const [alignmentProgress, setAlignmentProgress] = useState(0);
-  const [isFormed, setIsFormed] = useState(false);
   const faceTrackerRef = useRef<any>(null);
+
+  const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps } =
+    useSequence(headRotation);
+
+  const alignmentProgress = phase === "hold" ? holdProgress : phase === "resonance" ? 1 : 0;
+  const isFormed = phase === "resonance";
 
   useEffect(() => {
     return () => {
@@ -28,17 +28,12 @@ function App() {
     <div className="app-container">
       <Canvas
         camera={{ position: [0, 0, 6], fov: 50, near: 0.1, far: 100 }}
-        gl={{
-          antialias: true,
-          alpha: false,
-          powerPreference: "high-performance",
-        }}
+        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
         dpr={[1, 2]}
         style={{ background: "#f5ede4" }}
       >
         {/* @ts-ignore */}
         <color attach="background" args={["#f5ede4"]} />
-        {/* Subtle fill lights — curves use LineBasicMaterial so these are accent only */}
         {/* @ts-ignore */}
         <ambientLight intensity={0.2} />
         {/* @ts-ignore */}
@@ -47,7 +42,7 @@ function App() {
         <ResonanceVortex
           alignmentProgress={alignmentProgress}
           isFormed={isFormed}
-          onFormed={setIsFormed}
+          onFormed={() => {}}
           headRotation={headRotation}
         />
 
@@ -55,16 +50,18 @@ function App() {
       </Canvas>
 
       <MinimalUI
-        alignmentProgress={alignmentProgress}
-        isFormed={isFormed}
+        activeStep={activeStep}
+        phase={phase}
+        holdProgress={holdProgress}
+        resonanceProgress={resonanceProgress}
+        stepIndex={stepIndex}
+        totalSteps={totalSteps}
         headRotation={headRotation}
       />
 
       <FaceTracker
         ref={faceTrackerRef}
         onHeadRotationChange={setHeadRotation}
-        onAlignmentProgressChange={setAlignmentProgress}
-        onFormedChange={setIsFormed}
       />
     </div>
   );
