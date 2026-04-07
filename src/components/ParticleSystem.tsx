@@ -79,11 +79,11 @@ const ParticleSystem = ({
     );
 
     const mat = new THREE.PointsMaterial({
-      size: 0.05,
-      color: new THREE.Color("#FFD700"),
+      size: 0.08,
+      color: new THREE.Color("#7A9E8A"),
       sizeAttenuation: true,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.45,
       toneMapped: false,
     });
 

@@ -3,8 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import ParticleSystem from "./components/ParticleSystem";
 import PostProcessing from "./components/PostProcessing";
-import CenterFocus from "./components/UI/CenterFocus";
-import AuraWidget from "./components/UI/AuraWidget";
+import MinimalUI from "./components/UI/MinimalUI";
 import FloatingPhotos from "./components/FloatingPhotos";
 import FaceTracker from "./components/FaceTracker";
 import "./App.css";
@@ -97,9 +96,12 @@ function App() {
         <Preload all />
       </Canvas>
 
-      {/* HUD Components */}
-      <CenterFocus alignmentProgress={alignmentProgress} />
-      <AuraWidget alignmentProgress={alignmentProgress} isFormed={isFormed} />
+      {/* Minimal UI overlay */}
+      <MinimalUI
+        alignmentProgress={alignmentProgress}
+        isFormed={isFormed}
+        headRotation={headRotation}
+      />
 
       {/* Face Tracking */}
       <FaceTracker

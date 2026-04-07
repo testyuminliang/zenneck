@@ -16,29 +16,28 @@ const PostProcessing = ({
   const { gl } = useThree();
 
   useEffect(() => {
-    // Set up gradient background
-    gl.setClearColor("#0a0a0a", 1);
-    const bgColor = new THREE.Color("#0a0a0a");
+    // Set up light background
+    const bgColor = new THREE.Color("#F5F2EE");
     gl.setClearColor(bgColor, 1);
   }, [gl]);
 
-  // Calculate bloom intensity based on alignment progress
-  let bloomIntensity = 2;
+  // Calculate bloom intensity based on alignment progress - subtle for light bg
+  let bloomIntensity = 0.3;
   if (isFormed) {
-    // Burst effect when formed
-    bloomIntensity = 4;
+    // Subtle burst effect when formed
+    bloomIntensity = 0.8;
   } else {
-    // Gradual increase as alignment progresses
-    bloomIntensity = 2 + alignmentProgress * 1;
+    // Very gradual increase as alignment progresses
+    bloomIntensity = 0.3 + alignmentProgress * 0.2;
   }
 
   return (
     <EffectComposer>
       <Bloom
         intensity={bloomIntensity}
-        luminanceThreshold={0.15}
-        luminanceSmoothing={0.9}
-        blendFunction={BlendFunction.ADD}
+        luminanceThreshold={0.2}
+        luminanceSmoothing={0.95}
+        blendFunction={BlendFunction.SCREEN}
       />
       <ColorDepth bits={8} />
     </EffectComposer>
