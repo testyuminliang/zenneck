@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import ResonanceVortex from "./components/ResonanceVortex";
-import PostEffects from "./components/PostEffects";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
 import "./App.css";
@@ -35,21 +34,22 @@ function App() {
           powerPreference: "high-performance",
         }}
         dpr={[1, 2]}
-        style={{ background: "#020408" }}
+        style={{ background: "#f5ede4" }}
       >
+        {/* @ts-ignore */}
+        <color attach="background" args={["#f5ede4"]} />
         {/* Subtle fill lights — curves use LineBasicMaterial so these are accent only */}
         {/* @ts-ignore */}
         <ambientLight intensity={0.2} />
         {/* @ts-ignore */}
-        <pointLight position={[0, 0, 4]} intensity={0.5} color="#D4AF37" />
+        <pointLight position={[0, 0, 4]} intensity={0.5} color="#C4785C" />
 
         <ResonanceVortex
           alignmentProgress={alignmentProgress}
           isFormed={isFormed}
           onFormed={setIsFormed}
+          headRotation={headRotation}
         />
-
-        <PostEffects alignmentProgress={alignmentProgress} isFormed={isFormed} />
 
         <Preload all />
       </Canvas>

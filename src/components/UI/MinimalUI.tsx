@@ -6,9 +6,10 @@ interface Props {
   headRotation: { roll: number };
 }
 
-// ── Design tokens ────────────────────────────────────────────────────
-const gold = "rgba(212,175,55,";
-const emerald = "rgba(14,107,82,";
+// ── Design tokens — warm neutral / Claude palette ────────────────────
+const warm = "rgba(180,95,65,";     // terracotta-amber (darker for light bg)
+const clay = "rgba(130,65,45,";     // deep clay
+const cream = "rgba(100,60,40,";    // warm dark brown (text on light bg)
 
 function pad2(n: number) {
   return String(Math.floor(n)).padStart(2, "0");
@@ -35,20 +36,21 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
     const tick = () => {
       orbRotRef.current += 0.4;
       if (orbRef.current) {
-        const hue1 = isFormed ? 47 : 160 + alignmentProgress * 20;
-        const hue2 = isFormed ? 40 : 140;
-        const sat = 70 + alignmentProgress * 30;
+        // Warm palette: terracotta (18°) → amber (35°) → warm peach (28°)
+        const hue1 = isFormed ? 35 : 18 + alignmentProgress * 12;
+        const hue2 = isFormed ? 28 : 15;
+        const sat = 55 + alignmentProgress * 25;
         const bright = 0.55 + alignmentProgress * 0.35;
         orbRef.current.style.background = `conic-gradient(
           from ${orbRotRef.current}deg,
-          hsl(${hue1}, ${sat}%, 45%),
-          hsl(${hue2}, ${sat - 10}%, 30%),
-          hsl(${hue1 + 30}, ${sat}%, 40%),
-          hsl(${hue1}, ${sat}%, 45%)
+          hsl(${hue1}, ${sat}%, 52%),
+          hsl(${hue2}, ${sat - 10}%, 38%),
+          hsl(${hue1 + 15}, ${sat}%, 48%),
+          hsl(${hue1}, ${sat}%, 52%)
         )`;
         orbRef.current.style.boxShadow = `
-          0 0 ${12 + alignmentProgress * 24}px ${gold}${bright}),
-          inset 0 0 ${8 + alignmentProgress * 16}px ${gold}0.3)
+          0 0 ${12 + alignmentProgress * 24}px ${warm}${bright}),
+          inset 0 0 ${8 + alignmentProgress * 16}px ${warm}0.3)
         `;
       }
       animRef.current = requestAnimationFrame(tick);
@@ -87,10 +89,10 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
         padding: "0 2rem",
         pointerEvents: "none",
       }}>
-        {/* Left gold line */}
+        {/* Left warm line */}
         <div style={{
           flex: 1, height: "0.5px",
-          background: `linear-gradient(90deg, transparent, ${gold}0.5))`,
+          background: `linear-gradient(90deg, transparent, ${warm}0.4))`,
         }} />
 
         {/* Center label */}
@@ -101,7 +103,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           <span style={{
             fontSize: "9px",
             letterSpacing: "0.32em",
-            color: `${gold}0.6)`,
+            color: `${cream}0.55)`,
             fontFamily: "'DM Sans', sans-serif",
             fontWeight: 300,
           }}>
@@ -109,7 +111,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           </span>
           <span style={{
             fontSize: "9px",
-            color: `${gold}0.3)`,
+            color: `${warm}0.35)`,
             fontWeight: 200,
           }}>
             •
@@ -117,7 +119,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           <span style={{
             fontSize: "10px",
             letterSpacing: "0.15em",
-            color: `${gold}${aligned ? "0.9" : "0.45"})`,
+            color: `${warm}${aligned ? "0.9" : "0.45"})`,
             fontFamily: "monospace",
             fontWeight: 300,
             transition: "color 0.6s",
@@ -126,10 +128,10 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           </span>
         </div>
 
-        {/* Right gold line */}
+        {/* Right warm line */}
         <div style={{
           flex: 1, height: "0.5px",
-          background: `linear-gradient(90deg, ${gold}0.5), transparent)`,
+          background: `linear-gradient(90deg, ${warm}0.4), transparent)`,
         }} />
       </div>
 
@@ -143,7 +145,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           margin: 0,
           fontSize: "11px",
           letterSpacing: "0.22em",
-          color: aligned ? `${gold}0.85)` : "rgba(255,255,255,0.3)",
+          color: aligned ? `${warm}0.85)` : `${cream}0.3)`,
           fontFamily: "'DM Serif Display', serif",
           fontStyle: "italic",
           animation: "breathe 4s ease-in-out infinite",
@@ -160,7 +162,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
         <span style={{
           fontSize: "7px",
           letterSpacing: "0.18em",
-          color: `rgba(255,255,255,0.18)`,
+          color: `${cream}0.2)`,
           fontFamily: "monospace",
         }}>
           ROLL {roll >= 0 ? "+" : ""}{roll.toFixed(1)}°
@@ -174,6 +176,11 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
         position: "fixed", bottom: "1.8rem", right: "1.8rem",
         zIndex: 100, pointerEvents: "none",
         display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+        background: "rgba(255,248,240,0.55)",
+        backdropFilter: "blur(10px)",
+        borderRadius: "56px",
+        padding: "14px 14px 8px",
+        border: `0.5px solid ${warm}0.2)`,
       }}>
         {/* outer glow ring */}
         <div style={{
@@ -183,7 +190,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           <div style={{
             position: "absolute", inset: "-12px",
             borderRadius: "50%",
-            background: `radial-gradient(circle, ${gold}${(0.08 + alignmentProgress * 0.18).toFixed(2)}) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, ${warm}${(0.08 + alignmentProgress * 0.18).toFixed(2)}) 0%, transparent 70%)`,
             filter: "blur(8px)",
             transition: "background 0.6s",
           }} />
@@ -202,13 +209,13 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
           <div style={{
             position: "absolute", inset: 0,
             borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22) 0%, transparent 60%)",
+            background: "radial-gradient(circle at 35% 30%, rgba(255,240,225,0.20) 0%, transparent 60%)",
           }} />
           {/* border */}
           <div style={{
             position: "absolute", inset: 0,
             borderRadius: "50%",
-            border: `0.5px solid ${gold}${aligned ? "0.5" : "0.2"})`,
+            border: `0.5px solid ${warm}${aligned ? "0.5" : "0.2"})`,
             transition: "border-color 0.6s",
           }} />
         </div>
@@ -216,7 +223,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
         <span style={{
           fontSize: "7px",
           letterSpacing: "0.2em",
-          color: aligned ? `${gold}0.7)` : "rgba(255,255,255,0.2)",
+          color: aligned ? `${warm}0.7)` : `${cream}0.2)`,
           fontFamily: "monospace",
           transition: "color 0.6s",
         }}>
@@ -233,7 +240,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
       }}>
         <div style={{
           width: "160px", height: "1px",
-          background: "rgba(255,255,255,0.06)",
+          background: `${cream}0.25)`,
           position: "relative",
           borderRadius: "2px",
         }}>
@@ -243,7 +250,7 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
             left: `${((18 - 2 + 45) / 90) * 100}%`,
             width: `${(4 / 90) * 100}%`,
             top: 0, height: "100%",
-            background: `${emerald}0.4)`,
+            background: `${clay}0.5)`,
             borderRadius: "2px",
           }} />
           {/* Current thumb */}
@@ -254,8 +261,8 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
             transform: "translateX(-50%)",
             width: "8px", height: "8px",
             borderRadius: "50%",
-            background: aligned ? `${gold}0.9)` : "rgba(255,255,255,0.35)",
-            boxShadow: aligned ? `0 0 8px ${gold}0.6)` : "none",
+            background: aligned ? `${warm}0.9)` : `${cream}0.35)`,
+            boxShadow: aligned ? `0 0 8px ${warm}0.6)` : "none",
             transition: "left 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.5s",
           }} />
         </div>

@@ -7,20 +7,21 @@ interface Props {
   alignmentProgress: number;
   isFormed: boolean;
   onFormed: (v: boolean) => void;
+  headRotation: { yaw: number; pitch: number; roll: number };
 }
 
 const noise3D = createNoise3D();
 const N = 140; // points per curve
 
-// 7 curves — alternating deep emerald and gold
+// 7 curves — warm terracotta / amber palette
 const CURVE_CONFIGS = [
-  { color: "#0E6B52", ampX: 2.0, ampY: 1.4, ampZ: 0.55, freqT: 0.18, noiseOff: 0.0 },
-  { color: "#D4AF37", ampX: 1.5, ampY: 2.1, ampZ: 0.45, freqT: 0.23, noiseOff: 7.3 },
-  { color: "#0A4A37", ampX: 2.4, ampY: 1.1, ampZ: 0.70, freqT: 0.15, noiseOff: 14.6 },
-  { color: "#C9A227", ampX: 1.7, ampY: 2.3, ampZ: 0.50, freqT: 0.26, noiseOff: 21.9 },
-  { color: "#1A7A60", ampX: 2.2, ampY: 1.6, ampZ: 0.60, freqT: 0.20, noiseOff: 29.2 },
-  { color: "#E8C94A", ampX: 1.3, ampY: 1.9, ampZ: 0.35, freqT: 0.17, noiseOff: 36.5 },
-  { color: "#083326", ampX: 2.6, ampY: 1.0, ampZ: 0.80, freqT: 0.13, noiseOff: 43.8 },
+  { color: "#C4785C", ampX: 2.0, ampY: 1.4, ampZ: 0.55, freqT: 0.18, noiseOff: 0.0 },
+  { color: "#E5B896", ampX: 1.5, ampY: 2.1, ampZ: 0.45, freqT: 0.23, noiseOff: 7.3 },
+  { color: "#9A5840", ampX: 2.4, ampY: 1.1, ampZ: 0.70, freqT: 0.15, noiseOff: 14.6 },
+  { color: "#D4956E", ampX: 1.7, ampY: 2.3, ampZ: 0.50, freqT: 0.26, noiseOff: 21.9 },
+  { color: "#B87055", ampX: 2.2, ampY: 1.6, ampZ: 0.60, freqT: 0.20, noiseOff: 29.2 },
+  { color: "#ECC99A", ampX: 1.3, ampY: 1.9, ampZ: 0.35, freqT: 0.17, noiseOff: 36.5 },
+  { color: "#7A3F2C", ampX: 2.6, ampY: 1.0, ampZ: 0.80, freqT: 0.13, noiseOff: 43.8 },
 ] as const;
 
 // Lerp helper
@@ -28,12 +29,14 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-export default function ResonanceVortex({ alignmentProgress, isFormed: _isFormed, onFormed }: Props) {
+export default function ResonanceVortex({ alignmentProgress, isFormed: _isFormed, onFormed, headRotation }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const linesRef = useRef<THREE.Line[]>([]);
   const convergenceRef = useRef(0);
   const formedRef = useRef(false);
   const timeRef = useRef(0);
+  const smoothYawRef = useRef(0);
+  const smoothRollRef = useRef(0);
 
   // Build raw THREE.Line objects once
   useEffect(() => {
@@ -64,6 +67,14 @@ export default function ResonanceVortex({ alignmentProgress, isFormed: _isFormed
   useFrame((_, delta) => {
     timeRef.current += delta;
     const t = timeRef.current;
+
+    // Head rotation drives group orientation (yaw → Y, roll → Z)
+    smoothYawRef.current = lerp(smoothYawRef.current, headRotation.yaw * 0.05, 0.06);
+    smoothRollRef.current = lerp(smoothRollRef.current, headRotation.roll * 0.012, 0.06);
+    if (groupRef.current) {
+      groupRef.current.rotation.y = smoothYawRef.current;
+      groupRef.current.rotation.z = smoothRollRef.current;
+    }
 
     // Convergence target: trigger when alignment > 85%
     const targetConv = alignmentProgress > 0.85 ? 1.0 : 0.0;

@@ -23,7 +23,9 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
     const animationIdRef = useRef<number | null>(null);
     const isInitializedRef = useRef(false);
-    const previousRollRef = useRef(0);
+    const smoothedRollRef = useRef(0);
+    const smoothedYawRef = useRef(0);
+    const lastDetectTimeRef = useRef(0);
 
     useImperativeHandle(ref, () => ({
       stop: () => {
@@ -56,11 +58,11 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
 
           faceLandmarkerRef.current = landmarker;
 
-          // Request camera access
+          // Request camera access — lower res for faster detection
           const stream = await navigator.mediaDevices.getUserMedia({
             video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
+              width: { ideal: 640 },
+              height: { ideal: 480 },
               facingMode: "user",
             },
           });
@@ -87,6 +89,14 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
           animationIdRef.current = requestAnimationFrame(trackFace);
           return;
         }
+
+        // Throttle detection to ~30fps to reduce CPU load
+        const now = performance.now();
+        if (now - lastDetectTimeRef.current < 33) {
+          animationIdRef.current = requestAnimationFrame(trackFace);
+          return;
+        }
+        lastDetectTimeRef.current = now;
 
         try {
           const results = faceLandmarkerRef.current.detectForVideo(
@@ -123,8 +133,11 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
               yaw = (noseX - eyesCenterX) * 100; // Scale factor
             }
 
-            // Smooth the values using lerp
-            yaw = THREE.MathUtils.lerp(previousRollRef.current, yaw, 0.1);
+            // Smooth roll and yaw independently with higher factor for responsiveness
+            smoothedRollRef.current = THREE.MathUtils.lerp(smoothedRollRef.current, roll, 0.4);
+            smoothedYawRef.current = THREE.MathUtils.lerp(smoothedYawRef.current, yaw, 0.35);
+            roll = smoothedRollRef.current;
+            yaw = smoothedYawRef.current;
 
             // Calculate alignment progress (how close to 18° ±2°)
             const rollAngle = Math.abs(roll);
@@ -149,7 +162,6 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
 
             onHeadRotationChange({ yaw, pitch, roll });
             onAlignmentProgressChange(Math.min(alignmentProgress, 1));
-            previousRollRef.current = yaw;
           }
         } catch (error) {
           console.error("Face detection error:", error);
