@@ -9,5 +9,3 @@ declare namespace JSX {
     pointLight: any;
   }
 }
-
-

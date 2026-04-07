@@ -1,7 +1,7 @@
-import { useEffect, useRef, useMemo } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import * as THREE from 'three';
-import { createNoise3D } from 'simplex-noise';
+import { useEffect, useRef, useMemo } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
+import { createNoise3D } from "simplex-noise";
 
 interface ParticleSystemProps {
   headRotation: { yaw: number; pitch: number; roll: number };
@@ -19,13 +19,19 @@ const ParticleSystem = ({
   const pointsRef = useRef<THREE.Points>(null);
   const { camera } = useThree();
   const noiseRef = useRef(createNoise3D());
-  
+
   // Particle state
   const particleCount = 10000;
-  const positionsRef = useRef<Float32Array>(new Float32Array(particleCount * 3));
-  const targetPositionsRef = useRef<Float32Array>(new Float32Array(particleCount * 3));
-  const velocitiesRef = useRef<Float32Array>(new Float32Array(particleCount * 3));
-  const particleStateRef = useRef<'chaos' | 'forming' | 'formed'>('chaos');
+  const positionsRef = useRef<Float32Array>(
+    new Float32Array(particleCount * 3),
+  );
+  const targetPositionsRef = useRef<Float32Array>(
+    new Float32Array(particleCount * 3),
+  );
+  const velocitiesRef = useRef<Float32Array>(
+    new Float32Array(particleCount * 3),
+  );
+  const particleStateRef = useRef<"chaos" | "forming" | "formed">("chaos");
   const transitionProgressRef = useRef(0);
   const timeRef = useRef(0);
 
@@ -47,8 +53,8 @@ const ParticleSystem = ({
       positions[idx + 2] = (Math.random() - 0.5) * 20;
 
       // Target positions - grid in Polaroid shape
-      const x = (i % gridSize) * spacing - gridSize * spacing / 2;
-      const y = Math.floor(i / gridSize) * spacing - gridSize * spacing / 2;
+      const x = (i % gridSize) * spacing - (gridSize * spacing) / 2;
+      const y = Math.floor(i / gridSize) * spacing - (gridSize * spacing) / 2;
       const z = 0;
 
       targetPositions[idx] = x;
@@ -67,11 +73,14 @@ const ParticleSystem = ({
     initializeParticles();
 
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positionsRef.current, 3));
+    geo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(positionsRef.current, 3),
+    );
 
     const mat = new THREE.PointsMaterial({
       size: 0.05,
-      color: new THREE.Color('#FFD700'),
+      color: new THREE.Color("#FFD700"),
       sizeAttenuation: true,
       transparent: true,
       opacity: 0.8,
@@ -92,7 +101,7 @@ const ParticleSystem = ({
     const time = state.clock.getElapsedTime();
     timeRef.current = time;
 
-    if (particleStateRef.current === 'chaos') {
+    if (particleStateRef.current === "chaos") {
       // Fluid motion using Simplex noise
       // @ts-ignore
       const noiseFunc = noiseRef.current;
@@ -101,9 +110,24 @@ const ParticleSystem = ({
         const scale = 0.3;
         const speed = 0.5;
 
-        const nx = noiseFunc(positions[idx] * scale, positions[idx + 1] * scale, time * speed) * 0.1;
-        const ny = noiseFunc(positions[idx + 1] * scale, positions[idx + 2] * scale, time * speed) * 0.1;
-        const nz = noiseFunc(positions[idx + 2] * scale, positions[idx] * scale, time * speed) * 0.1;
+        const nx =
+          noiseFunc(
+            positions[idx] * scale,
+            positions[idx + 1] * scale,
+            time * speed,
+          ) * 0.1;
+        const ny =
+          noiseFunc(
+            positions[idx + 1] * scale,
+            positions[idx + 2] * scale,
+            time * speed,
+          ) * 0.1;
+        const nz =
+          noiseFunc(
+            positions[idx + 2] * scale,
+            positions[idx] * scale,
+            time * speed,
+          ) * 0.1;
 
         velocitiesRef.current[idx] += nx;
         velocitiesRef.current[idx + 1] += ny;
@@ -121,23 +145,29 @@ const ParticleSystem = ({
 
         // Keep particles in bounds
         const bound = 15;
-        if (Math.abs(positions[idx]) > bound) positions[idx] = -positions[idx] * 0.5;
-        if (Math.abs(positions[idx + 1]) > bound) positions[idx + 1] = -positions[idx + 1] * 0.5;
-        if (Math.abs(positions[idx + 2]) > bound) positions[idx + 2] = -positions[idx + 2] * 0.5;
+        if (Math.abs(positions[idx]) > bound)
+          positions[idx] = -positions[idx] * 0.5;
+        if (Math.abs(positions[idx + 1]) > bound)
+          positions[idx + 1] = -positions[idx + 1] * 0.5;
+        if (Math.abs(positions[idx + 2]) > bound)
+          positions[idx + 2] = -positions[idx + 2] * 0.5;
       }
-    } else if (particleStateRef.current === 'forming') {
+    } else if (particleStateRef.current === "forming") {
       // Transition from chaos to formed
       const transitionDuration = 0.6; // 600ms
       transitionProgressRef.current += 0.016 / transitionDuration; // Assuming 60fps
 
       if (transitionProgressRef.current >= 1) {
         transitionProgressRef.current = 1;
-        particleStateRef.current = 'formed';
+        particleStateRef.current = "formed";
         setIsFormed(true);
       }
 
       const progress = transitionProgressRef.current;
-      const easeProgress = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+      const easeProgress =
+        progress < 0.5
+          ? 2 * progress * progress
+          : -1 + (4 - 2 * progress) * progress;
 
       for (let i = 0; i < particleCount; i++) {
         const idx = i * 3;
@@ -146,27 +176,35 @@ const ParticleSystem = ({
         positions[idx] = THREE.MathUtils.lerp(
           positions[idx],
           targetPos[idx],
-          easeProgress
+          easeProgress,
         );
         positions[idx + 1] = THREE.MathUtils.lerp(
           positions[idx + 1],
           targetPos[idx + 1],
-          easeProgress
+          easeProgress,
         );
         positions[idx + 2] = THREE.MathUtils.lerp(
           positions[idx + 2],
           targetPos[idx + 2],
-          easeProgress
+          easeProgress,
         );
       }
     }
 
     // Update camera position based on head rotation (subtle effect)
-    const yawInfluence = Math.sin(headRotation.yaw * Math.PI / 180) * 0.5;
-    const pitchInfluence = Math.sin(headRotation.pitch * Math.PI / 180) * 0.3;
+    const yawInfluence = Math.sin((headRotation.yaw * Math.PI) / 180) * 0.5;
+    const pitchInfluence = Math.sin((headRotation.pitch * Math.PI) / 180) * 0.3;
 
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, yawInfluence, 0.1);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, pitchInfluence, 0.1);
+    camera.position.x = THREE.MathUtils.lerp(
+      camera.position.x,
+      yawInfluence,
+      0.1,
+    );
+    camera.position.y = THREE.MathUtils.lerp(
+      camera.position.y,
+      pitchInfluence,
+      0.1,
+    );
 
     // Check for alignment trigger (18° ±2°)
     const rollAngle = Math.abs(headRotation.roll);
@@ -176,9 +214,9 @@ const ParticleSystem = ({
     if (
       rollAngle >= targetRoll - tolerance &&
       rollAngle <= targetRoll + tolerance &&
-      particleStateRef.current === 'chaos'
+      particleStateRef.current === "chaos"
     ) {
-      particleStateRef.current = 'forming';
+      particleStateRef.current = "forming";
       transitionProgressRef.current = 0;
     }
 

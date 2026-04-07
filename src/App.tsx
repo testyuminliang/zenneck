@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { Preload } from '@react-three/drei';
-import ParticleSystem from './components/ParticleSystem';
-import PostProcessing from './components/PostProcessing';
-import CenterFocus from './components/UI/CenterFocus';
-import AuraWidget from './components/UI/AuraWidget';
-import FloatingPhotos from './components/FloatingPhotos';
-import FaceTracker from './components/FaceTracker';
-import './App.css';
+import { useEffect, useRef, useState } from "react";
+import { Canvas } from "@react-three/fiber";
+import { Preload } from "@react-three/drei";
+import ParticleSystem from "./components/ParticleSystem";
+import PostProcessing from "./components/PostProcessing";
+import CenterFocus from "./components/UI/CenterFocus";
+import AuraWidget from "./components/UI/AuraWidget";
+import FloatingPhotos from "./components/FloatingPhotos";
+import FaceTracker from "./components/FaceTracker";
+import "./App.css";
 
 interface HeadRotation {
   yaw: number;
@@ -17,10 +17,14 @@ interface HeadRotation {
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
+  const [headRotation, setHeadRotation] = useState<HeadRotation>({
+    yaw: 0,
+    pitch: 0,
+    roll: 0,
+  });
   const [alignmentProgress, setAlignmentProgress] = useState(0);
   const [isFormed, setIsFormed] = useState(false);
-  
+
   // FaceTracker will update headRotation and alignment progress
   const faceTrackerRef = useRef<any>(null);
 
@@ -38,8 +42,8 @@ function App() {
       <Canvas
         ref={canvasRef}
         camera={{
-          position: [0, 0, 8],
-          fov: 70,
+          position: [0, 0, 5],
+          fov: 75,
           aspect: window.innerWidth / window.innerHeight,
           near: 0.1,
           far: 1000,
@@ -47,17 +51,19 @@ function App() {
         gl={{
           antialias: true,
           alpha: true,
-          powerPreference: 'high-performance',
+          powerPreference: "high-performance",
           preserveDrawingBuffer: true,
         }}
         dpr={window.devicePixelRatio}
-        style={{ width: '100%', height: '100vh' }}
+        style={{ width: "100%", height: "100vh" }}
       >
         {/* Lighting */}
         {/* @ts-ignore */}
-        <ambientLight intensity={0.4} />
+        <ambientLight intensity={1.2} />
         {/* @ts-ignore */}
-        <pointLight position={[10, 10, 10]} intensity={0.6} />
+        <pointLight position={[10, 10, 10]} intensity={1.5} />
+        {/* @ts-ignore */}
+        <pointLight position={[-10, -10, 5]} intensity={0.8} />
 
         {/* Main Scene Components */}
         <ParticleSystem
@@ -66,11 +72,27 @@ function App() {
           isFormed={isFormed}
           setIsFormed={setIsFormed}
         />
-        
+
+        {/* Debug sphere to verify rendering */}
+        {/* @ts-ignore */}
+        <mesh position={[0, 0, 0]}>
+          {/* @ts-ignore */}
+          <sphereGeometry args={[0.2, 16, 16]} />
+          {/* @ts-ignore */}
+          <meshStandardMaterial
+            color="#FFD700"
+            emissive="#FFD700"
+            emissiveIntensity={1}
+          />
+        </mesh>
+
         <FloatingPhotos />
 
         {/* Post-processing effects */}
-        <PostProcessing alignmentProgress={alignmentProgress} isFormed={isFormed} />
+        <PostProcessing
+          alignmentProgress={alignmentProgress}
+          isFormed={isFormed}
+        />
 
         <Preload all />
       </Canvas>

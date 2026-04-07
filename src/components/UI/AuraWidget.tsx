@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import './UI.css';
+import { useEffect, useRef } from "react";
+import "./UI.css";
 
 interface AuraWidgetProps {
   alignmentProgress: number;
@@ -15,12 +15,12 @@ const AuraWidget = ({ alignmentProgress, isFormed }: AuraWidgetProps) => {
   useEffect(() => {
     const animate = () => {
       rotationRef.current += 0.3; // Slow rotation
-      
+
       if (sphereRef.current) {
         const hue = isFormed ? 360 : 40; // Gold or dynamic based on state
         const saturation = 70 + alignmentProgress * 30;
         const lightness = 50 - alignmentProgress * 15;
-        
+
         sphereRef.current.style.background = `
           conic-gradient(
             from ${rotationRef.current}deg,

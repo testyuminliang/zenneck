@@ -4,11 +4,7 @@
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: radial-gradient(
-    ellipse at center,
-    #001A12 0%,
-    #000000 100%
-  );
+  background: radial-gradient(ellipse at center, #001a12 0%, #000000 100%);
   position: relative;
 }
 
@@ -32,7 +28,8 @@
 
 /* Subtle glow effect */
 @keyframes glow-pulse {
-  0%, 100% {
+  0%,
+  100% {
     filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
   }
   50% {

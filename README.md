@@ -12,11 +12,13 @@ A sophisticated React 19 + Three.js + MediaPipe Face Tracking application that c
 ## 🔧 Core Features
 
 ### 1. **Particle System (10,000 particles)**
+
 - **CHAOS State**: Particles flow with Simplex Noise-driven fluid dynamics, creating organic turbulence
 - **FORMED State**: Auto-triggers when head Roll angle reaches 18° (±2° tolerance), particles snap into a perfect grid forming a 3D Polaroid photograph
 - **Transition**: Smooth 600ms easing with cinematic bloom burst (intensity 1.0 → 3.0)
 
 ### 2. **Face Tracking Integration (MediaPipe)**
+
 - Real-time facial landmark detection (468 points)
 - Head rotation extraction:
   - **Yaw** (left/right turn) → Camera X displacement
@@ -25,17 +27,20 @@ A sophisticated React 19 + Three.js + MediaPipe Face Tracking application that c
 - All values smoothed with exponential lerp for stutter-free motion
 
 ### 3. **Interactive UI Components**
+
 - **Center Focus**: Subtle crosshair that brightens as alignment approaches target
 - **Aura Widget**: Rotating semi-transparent sphere in bottom-right reflecting alignment state
 - **Floating Photos**: 4 Polaroid-like meshes scattered in 3D space with subtle bobbing animation
 
 ### 4. **Post-Processing**
+
 - Bloom effect with dynamic intensity tied to alignment progress
 - Color depth processing for enhanced visual depth
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 16+
 - npm or yarn
 
@@ -117,11 +122,13 @@ src/
 ## 🔐 Browser Compatibility
 
 Requires:
+
 - WebGL 2.0 support
 - getUserMedia API (camera access)
 - ES2020+ JavaScript support
 
 Tested on:
+
 - Chrome 90+
 - Firefox 88+
 - Safari 15+
@@ -134,6 +141,7 @@ MIT
 ## 🙏 Inspiration
 
 Designed as a meditative 3D experience combining:
+
 - Particle physics (chaos to order transformation)
 - Neck/spine alignment mindfulness
 - Immersive 3D visual feedback
@@ -142,7 +150,7 @@ Designed as a meditative 3D experience combining:
 ---
 
 **Note**: This application requires camera permissions. Privacy-first design ensures all face tracking happens locally on your device—no data transmission.
-      tseslint.configs.stylisticTypeChecked,
+tseslint.configs.stylisticTypeChecked,
 
       // Other configs...
     ],
@@ -153,9 +161,11 @@ Designed as a meditative 3D experience combining:
       },
       // other options...
     },
-  },
+
+},
 ])
-```
+
+````
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
@@ -184,4 +194,4 @@ export default defineConfig([
     },
   },
 ])
-```
+````

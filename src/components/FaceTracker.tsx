@@ -1,6 +1,6 @@
-import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
-import * as THREE from 'three';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
+import * as THREE from "three";
 
 interface HeadRotation {
   yaw: number;
@@ -15,7 +15,10 @@ interface FaceTrackerProps {
 }
 
 const FaceTracker = forwardRef<any, FaceTrackerProps>(
-  ({ onHeadRotationChange, onAlignmentProgressChange, onFormedChange }, ref) => {
+  (
+    { onHeadRotationChange, onAlignmentProgressChange, onFormedChange },
+    ref,
+  ) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
     const animationIdRef = useRef<number | null>(null);
@@ -29,7 +32,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
         }
         if (videoRef.current?.srcObject) {
           const stream = videoRef.current.srcObject as MediaStream;
-          stream.getTracks().forEach(track => track.stop());
+          stream.getTracks().forEach((track) => track.stop());
         }
       },
     }));
@@ -39,14 +42,15 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
         try {
           // Initialize MediaPipe Face Landmarker
           const vision = await FilesetResolver.forVisionTasks(
-            'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
           );
 
           const landmarker = await FaceLandmarker.createFromOptions(vision, {
             baseOptions: {
-              modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+              modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
             },
-            runningMode: 'VIDEO',
+            runningMode: "VIDEO",
             numFaces: 1,
           });
 
@@ -57,7 +61,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             video: {
               width: { ideal: 1280 },
               height: { ideal: 720 },
-              facingMode: 'user',
+              facingMode: "user",
             },
           });
 
@@ -70,18 +74,25 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             };
           }
         } catch (error) {
-          console.error('Face tracking initialization error:', error);
+          console.error("Face tracking initialization error:", error);
         }
       };
 
       const trackFace = () => {
-        if (!isInitializedRef.current || !faceLandmarkerRef.current || !videoRef.current) {
+        if (
+          !isInitializedRef.current ||
+          !faceLandmarkerRef.current ||
+          !videoRef.current
+        ) {
           animationIdRef.current = requestAnimationFrame(trackFace);
           return;
         }
 
         try {
-          const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, Date.now());
+          const results = faceLandmarkerRef.current.detectForVideo(
+            videoRef.current,
+            Date.now(),
+          );
 
           if (results.faceLandmarks && results.faceLandmarks.length > 0) {
             const landmarks = results.faceLandmarks[0];
@@ -114,17 +125,26 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
 
             // Smooth the values using lerp
             yaw = THREE.MathUtils.lerp(previousRollRef.current, yaw, 0.1);
-            
+
             // Calculate alignment progress (how close to 18° ±2°)
             const rollAngle = Math.abs(roll);
             const targetRoll = 18;
             const tolerance = 2;
-            
+
             let alignmentProgress = 0;
-            if (rollAngle >= targetRoll - tolerance && rollAngle <= targetRoll + tolerance) {
-              alignmentProgress = Math.max(0, 1 - Math.abs(rollAngle - targetRoll) / tolerance);
+            if (
+              rollAngle >= targetRoll - tolerance &&
+              rollAngle <= targetRoll + tolerance
+            ) {
+              alignmentProgress = Math.max(
+                0,
+                1 - Math.abs(rollAngle - targetRoll) / tolerance,
+              );
             } else if (rollAngle > targetRoll - tolerance) {
-              alignmentProgress = Math.max(0, 1 - Math.abs(rollAngle - targetRoll) / 10);
+              alignmentProgress = Math.max(
+                0,
+                1 - Math.abs(rollAngle - targetRoll) / 10,
+              );
             }
 
             onHeadRotationChange({ yaw, pitch, roll });
@@ -132,7 +152,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             previousRollRef.current = yaw;
           }
         } catch (error) {
-          console.error('Face detection error:', error);
+          console.error("Face detection error:", error);
         }
 
         animationIdRef.current = requestAnimationFrame(trackFace);
@@ -151,22 +171,22 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
       <video
         ref={videoRef}
         style={{
-          position: 'fixed',
+          position: "fixed",
           bottom: 10,
           left: 10,
-          width: '120px',
-          height: '90px',
-          borderRadius: '8px',
-          border: '1px solid #FFD700',
+          width: "120px",
+          height: "90px",
+          borderRadius: "8px",
+          border: "1px solid #FFD700",
           opacity: 0.3,
           zIndex: 50,
-          objectFit: 'cover',
+          objectFit: "cover",
         }}
       />
     );
-  }
+  },
 );
 
-FaceTracker.displayName = 'FaceTracker';
+FaceTracker.displayName = "FaceTracker";
 
 export default FaceTracker;
