@@ -95,8 +95,8 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
           setStepIndex(next);
           setHoldProgress(0);
           setResonanceProgress(0);
+          syncPhase("guide");
           if (isLast) setIsCompleted(true);
-          else syncPhase("guide");
         }
       }
 
