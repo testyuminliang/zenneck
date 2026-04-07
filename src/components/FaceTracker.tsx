@@ -25,6 +25,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
     const isInitializedRef = useRef(false);
     const smoothedRollRef = useRef(0);
     const smoothedYawRef = useRef(0);
+    const smoothedPitchRef = useRef(0);
     const lastDetectTimeRef = useRef(0);
 
     useImperativeHandle(ref, () => ({
@@ -123,21 +124,24 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
               const eyeHeightDiff = rightEye.y - leftEye.y;
               roll = Math.atan2(eyeHeightDiff, eyeDiff) * (180 / Math.PI);
 
-              // Calculate pitch from nose to chin distance
-              const noseToChainDist = chin.y - noseTip.y;
-              pitch = noseToChainDist * 30; // Scale factor
+              // Pitch: nose Y relative to eye-midpoint, normalized by face height
+              // Neutral ~0, looking up → negative, looking down → positive
+              const eyeMidY = (leftEye.y + rightEye.y) / 2;
+              const faceHeight = chin.y - eyeMidY;
+              pitch = ((noseTip.y - eyeMidY) / faceHeight - 0.45) * 150;
 
-              // Calculate yaw from nose position relative to eyes
-              const noseX = noseTip.x;
+              // Yaw: nose horizontal offset from eye center
               const eyesCenterX = (leftEye.x + rightEye.x) / 2;
-              yaw = (noseX - eyesCenterX) * 100; // Scale factor
+              yaw = (noseTip.x - eyesCenterX) * 100;
             }
 
-            // Smooth roll and yaw independently with higher factor for responsiveness
+            // Smooth all three axes
             smoothedRollRef.current = THREE.MathUtils.lerp(smoothedRollRef.current, roll, 0.4);
-            smoothedYawRef.current = THREE.MathUtils.lerp(smoothedYawRef.current, yaw, 0.35);
+            smoothedYawRef.current = THREE.MathUtils.lerp(smoothedYawRef.current, yaw, 0.4);
+            smoothedPitchRef.current = THREE.MathUtils.lerp(smoothedPitchRef.current, pitch, 0.4);
             roll = smoothedRollRef.current;
             yaw = smoothedYawRef.current;
+            pitch = smoothedPitchRef.current;
 
             // Calculate alignment progress (how close to 18° ±2°)
             const rollAngle = Math.abs(roll);

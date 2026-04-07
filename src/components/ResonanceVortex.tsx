@@ -37,6 +37,7 @@ export default function ResonanceVortex({ alignmentProgress, isFormed: _isFormed
   const timeRef = useRef(0);
   const smoothYawRef = useRef(0);
   const smoothRollRef = useRef(0);
+  const smoothPitchRef = useRef(0);
 
   // Build raw THREE.Line objects once
   useEffect(() => {
@@ -68,12 +69,14 @@ export default function ResonanceVortex({ alignmentProgress, isFormed: _isFormed
     timeRef.current += delta;
     const t = timeRef.current;
 
-    // Head rotation drives group orientation (yaw → Y, roll → Z)
+    // Head rotation drives group orientation (all 3 axes)
     smoothYawRef.current = lerp(smoothYawRef.current, headRotation.yaw * 0.05, 0.06);
+    smoothPitchRef.current = lerp(smoothPitchRef.current, headRotation.pitch * 0.03, 0.06);
     smoothRollRef.current = lerp(smoothRollRef.current, headRotation.roll * 0.012, 0.06);
     if (groupRef.current) {
-      groupRef.current.rotation.y = smoothYawRef.current;
-      groupRef.current.rotation.z = smoothRollRef.current;
+      groupRef.current.rotation.y = smoothYawRef.current;   // 左右转脸
+      groupRef.current.rotation.x = smoothPitchRef.current; // 上下点头
+      groupRef.current.rotation.z = smoothRollRef.current;  // 左右侧倾
     }
 
     // Convergence target: trigger when alignment > 85%
