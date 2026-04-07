@@ -87,10 +87,10 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
               const m = new THREE.Matrix4().fromArray(matrices[0].data);
               const euler = new THREE.Euler().setFromRotationMatrix(m, "YXZ");
               const toDeg = 180 / Math.PI;
-              // Negate yaw/roll for front-camera mirror flip
+              // yaw negated for mirror flip; roll NOT negated (matrix already in camera space)
               pitch =  euler.x * toDeg;
               yaw   = -euler.y * toDeg;
-              roll  = -euler.z * toDeg;
+              roll  =  euler.z * toDeg;
             } else {
               // Fallback: landmark-based (less reliable for pitch)
               const lm = results.faceLandmarks[0];

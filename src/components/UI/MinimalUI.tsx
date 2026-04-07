@@ -11,6 +11,9 @@ interface Props {
   headRotation: HeadRotation;
   guidedMode: boolean;
   onToggleGuidedMode: () => void;
+  amplitudeScale: number;
+  onAmplitudeChange: (scale: number) => void;
+  showCompletion: boolean;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -100,10 +103,80 @@ function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: n
   );
 }
 
+// ── Pitch guide (horizontal bar translates up/down) ───────────────────
+function PitchDial({ pitch, targetPitch, inZone }: { pitch: number; targetPitch: number; inZone: boolean }) {
+  const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
+  const toY = (v: number) => clamp(v, 45) / 45 * 15; // ° → px offset from center
+  const liveY  = toY(pitch);
+  const ghostY = toY(targetPitch);
+  return (
+    <div style={{
+      position: "fixed", top: "52px", left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 100, pointerEvents: "none",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
+    }}>
+      <div style={{ position: "relative", width: "44px", height: "44px" }}>
+        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${CR}0.2)`, background: "rgba(255,248,240,0.45)", backdropFilter: "blur(6px)" }} />
+        {/* center axis line (vertical guide) */}
+        <div style={{ position: "absolute", top: "8px", left: "50%", width: "1px", height: "28px", marginLeft: "-0.5px", background: `${CR}0.1)` }} />
+        {/* target ghost bar */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "26px", height: "1px", marginLeft: "-13px", marginTop: `calc(-0.5px + ${ghostY}px)`, background: `${CL}0.3)` }} />
+        {/* live bar */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "30px", height: "1.5px", marginLeft: "-15px", marginTop: `calc(-0.75px + ${liveY}px)`, borderRadius: "2px", background: inZone ? `linear-gradient(90deg,${W}0.3),${W}0.9),${W}0.3))` : `linear-gradient(90deg,${CR}0.1),${CR}0.55),${CR}0.1))`, transition: "background 0.4s" }} />
+        {/* pivot */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: inZone ? `${W}0.9)` : `${CR}0.35)`, boxShadow: inZone ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
+      </div>
+      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: inZone ? `${W}0.75)` : `${CR}0.3)` }}>
+        {pitch >= 0 ? "+" : ""}{pitch.toFixed(1)}°
+      </span>
+    </div>
+  );
+}
+
+// ── Yaw guide (vertical bar translates left/right) ────────────────────
+function YawDial({ yaw, targetYaw, inZone }: { yaw: number; targetYaw: number; inZone: boolean }) {
+  const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
+  const toX = (v: number) => clamp(v, 20) / 20 * 15; // ° → px offset from center
+  const liveX  = toX(yaw);
+  const ghostX = toX(targetYaw);
+  return (
+    <div style={{
+      position: "fixed", top: "52px", left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 100, pointerEvents: "none",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
+    }}>
+      <div style={{ position: "relative", width: "44px", height: "44px" }}>
+        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${CR}0.2)`, background: "rgba(255,248,240,0.45)", backdropFilter: "blur(6px)" }} />
+        {/* center axis line (horizontal guide) */}
+        <div style={{ position: "absolute", left: "8px", top: "50%", height: "1px", width: "28px", marginTop: "-0.5px", background: `${CR}0.1)` }} />
+        {/* target ghost bar */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "1px", height: "26px", marginTop: "-13px", marginLeft: `calc(-0.5px + ${ghostX}px)`, background: `${CL}0.3)` }} />
+        {/* live bar */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "1.5px", height: "30px", marginTop: "-15px", marginLeft: `calc(-0.75px + ${liveX}px)`, borderRadius: "2px", background: inZone ? `linear-gradient(180deg,${W}0.3),${W}0.9),${W}0.3))` : `linear-gradient(180deg,${CR}0.1),${CR}0.55),${CR}0.1))`, transition: "background 0.4s" }} />
+        {/* pivot */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: inZone ? `${W}0.9)` : `${CR}0.35)`, boxShadow: inZone ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
+      </div>
+      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: inZone ? `${W}0.75)` : `${CR}0.3)` }}>
+        {yaw >= 0 ? "+" : ""}{yaw.toFixed(1)}°
+      </span>
+    </div>
+  );
+}
+
+const AMPLITUDE_PRESETS = [
+  { label: "轻", scale: 0.65 },
+  { label: "中", scale: 1.0  },
+  { label: "大", scale: 1.5  },
+];
+
 export default function MinimalUI({
   activeStep, phase, holdProgress, resonanceProgress,
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
+  amplitudeScale, onAmplitudeChange,
+  showCompletion,
 }: Props) {
   const orbRotRef = useRef(0);
   const orbRef = useRef<HTMLDivElement>(null);
@@ -155,6 +228,16 @@ export default function MinimalUI({
           0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.8; }
           100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
         }
+        @keyframes completion-ring {
+          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.9; }
+          100% { transform: translate(-50%,-50%) scale(6);   opacity: 0; }
+        }
+        @keyframes completion-fade-in {
+          0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.85); }
+          40%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+          80%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
       `}</style>
 
       {/* ── TOP BAR ─────────────────────────────────────────────── */}
@@ -176,13 +259,15 @@ export default function MinimalUI({
         <div style={{ flex: 1, height: "0.5px", background: `linear-gradient(90deg,${W}0.3),transparent)` }} />
       </div>
 
-      {/* ── HORIZON DIAL (guided roll steps only) ───────────────── */}
+      {/* ── AXIS DIALS (guided mode only) ───────────────────────── */}
       {guidedMode && activeStep.axis === "roll" && (
-        <HorizonDial
-          roll={headRotation.roll}
-          targetRoll={activeStep.target}
-          inZone={inZone}
-        />
+        <HorizonDial roll={headRotation.roll} targetRoll={activeStep.target} inZone={inZone} />
+      )}
+      {guidedMode && activeStep.axis === "pitch" && (
+        <PitchDial pitch={headRotation.pitch} targetPitch={activeStep.target} inZone={inZone} />
+      )}
+      {guidedMode && activeStep.axis === "yaw" && (
+        <YawDial yaw={headRotation.yaw} targetYaw={activeStep.target} inZone={inZone} />
       )}
 
       {/* ── RESONANCE BURST RINGS ───────────────────────────────── */}
@@ -338,7 +423,7 @@ export default function MinimalUI({
       {/* ── AURA ORB (bottom right) ─────────────────────────────── */}
       <div style={{
         position: "fixed", bottom: "1.8rem", right: "1.8rem",
-        zIndex: 100, pointerEvents: "none",
+        zIndex: 100, pointerEvents: "auto",
         display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
         background: "rgba(255,248,240,0.55)",
         backdropFilter: "blur(10px)",
@@ -370,7 +455,68 @@ export default function MinimalUI({
         }}>
           {isResonating ? "RESONANT" : inZone ? "ALIGNED" : "TRACKING"}
         </span>
+
+        {/* Amplitude preset selector */}
+        <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
+          {AMPLITUDE_PRESETS.map(({ label, scale }) => {
+            const active = Math.abs(amplitudeScale - scale) < 0.01;
+            return (
+              <div
+                key={label}
+                onClick={() => onAmplitudeChange(scale)}
+                style={{
+                  width: "22px", height: "22px", borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  background: active ? `${W}0.85)` : "rgba(255,248,240,0.5)",
+                  border: `1px solid ${W}${active ? "0.7" : "0.2"})`,
+                  fontSize: "8px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif",
+                  color: active ? "rgba(255,248,240,0.95)" : `${CR}0.45)`,
+                  transition: "all 0.25s",
+                  userSelect: "none",
+                }}
+              >
+                {label}
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* ── COMPLETION OVERLAY ──────────────────────────────────── */}
+      {showCompletion && <>
+        {/* 6 rings expanding outward, staggered */}
+        {[0,1,2,3,4,5].map((i) => (
+          <div key={i} style={{
+            position: "fixed", top: "50%", left: "50%",
+            width: "120px", height: "120px",
+            marginLeft: "-60px", marginTop: "-60px",
+            borderRadius: "50%",
+            border: `1.5px solid ${W}${(0.9 - i * 0.1).toFixed(2)})`,
+            animation: `completion-ring 2.8s ease-out ${i * 0.18}s forwards`,
+            pointerEvents: "none", zIndex: 400,
+          }} />
+        ))}
+        {/* Central message */}
+        <div style={{
+          position: "fixed", top: "50%", left: "50%",
+          transform: "translate(-50%,-50%)",
+          zIndex: 401, pointerEvents: "none",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
+          animation: "completion-fade-in 3.5s ease forwards",
+        }}>
+          <div style={{ fontSize: "32px", color: `${W}0.9)` }}>✦</div>
+          <span style={{
+            fontSize: "17px", letterSpacing: "0.22em",
+            color: `${W}0.88)`, fontFamily: "'DM Serif Display', serif",
+            fontStyle: "italic",
+          }}>颈椎已重置</span>
+          <span style={{
+            fontSize: "8px", letterSpacing: "0.35em",
+            color: `${CR}0.45)`, fontFamily: "monospace",
+          }}>NECK · SPINE RESET</span>
+        </div>
+      </>}
     </>
   );
 }

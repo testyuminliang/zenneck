@@ -1,26 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import type { StepDef, StepPhase, HeadRotation } from "../types";
 
+// Base targets at 1× scale. Amplitude presets: 轻 0.65× → ~13°, 中 1.0× → 20°, 大 1.5× → 30°
 export const STEPS: StepDef[] = [
-  { id: 0, axis: "roll",  target:  25, tolerance: 4, holdMs: 4000, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
-  { id: 1, axis: "roll",  target: -25, tolerance: 4, holdMs: 4000, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },
-  { id: 2, axis: "pitch", target: -22, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
-  { id: 3, axis: "pitch", target:  22, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",   arrowDir: "down"  },
-  { id: 4, axis: "yaw",   target:   8, tolerance: 5, holdMs: 4000, label: "向右转头", cue: "turn right",  arrowDir: "right" },
-  { id: 5, axis: "yaw",   target:  -8, tolerance: 5, holdMs: 4000, label: "向左转头", cue: "turn left",   arrowDir: "left"  },
+  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 4000, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
+  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 4000, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },
+  { id: 2, axis: "pitch", target: -20, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
+  { id: 3, axis: "pitch", target:  20, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",   arrowDir: "down"  },
+  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 4000, label: "向右转头", cue: "turn right",  arrowDir: "right" },
+  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 4000, label: "向左转头", cue: "turn left",   arrowDir: "left"  },
 ];
 
 const RESONANCE_MS = 1800;
 const GRACE_MS = 350; // ms before resetting when user drifts out of zone
 
-export function useSequence(headRotation: HeadRotation) {
+export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
   const rotRef = useRef(headRotation);
   rotRef.current = headRotation;
+  const scaleRef = useRef(amplitudeScale);
+  scaleRef.current = amplitudeScale;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<StepPhase>("guide");
   const [holdProgress, setHoldProgress] = useState(0);
   const [resonanceProgress, setResonanceProgress] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Mutable refs — used inside rAF loop without re-creating the loop
   const phaseRef = useRef<StepPhase>("guide");
@@ -41,8 +45,10 @@ export function useSequence(headRotation: HeadRotation) {
       const step = STEPS[stepIndexRef.current];
       const rot = rotRef.current;
       const value = rot[step.axis];
-      // In-zone: within 1.5× tolerance of target
-      const inZone = Math.abs(value - step.target) <= step.tolerance * 1.5;
+      const scaledTarget = step.target * scaleRef.current;
+      const scaledTol    = step.tolerance * scaleRef.current;
+      // In-zone: within 1.5× tolerance of scaled target
+      const inZone = Math.abs(value - scaledTarget) <= scaledTol * 1.5;
 
       const ph = phaseRef.current;
 
@@ -79,8 +85,8 @@ export function useSequence(headRotation: HeadRotation) {
         setResonanceProgress(rp);
 
         if (rp >= 1) {
-          // Advance to next step
-          const next = (stepIndexRef.current + 1) % STEPS.length;
+          const isLast = stepIndexRef.current === STEPS.length - 1;
+          const next = isLast ? 0 : stepIndexRef.current + 1;
           stepIndexRef.current = next;
           holdStartRef.current = null;
           resonanceStartRef.current = null;
@@ -89,7 +95,8 @@ export function useSequence(headRotation: HeadRotation) {
           setStepIndex(next);
           setHoldProgress(0);
           setResonanceProgress(0);
-          syncPhase("guide");
+          if (isLast) setIsCompleted(true);
+          else syncPhase("guide");
         }
       }
 
@@ -100,12 +107,17 @@ export function useSequence(headRotation: HeadRotation) {
     return () => cancelAnimationFrame(rafRef.current);
   }, []); // stable — all data accessed via refs
 
+  const rawStep = STEPS[stepIndex];
+  const activeStep = { ...rawStep, target: rawStep.target * amplitudeScale, tolerance: rawStep.tolerance * amplitudeScale };
+
   return {
     stepIndex,
-    activeStep: STEPS[stepIndex],
+    activeStep,
     phase,
     holdProgress,
     resonanceProgress,
     totalSteps: STEPS.length,
+    isCompleted,
+    resetCompleted: () => { setIsCompleted(false); syncPhase("guide"); },
   };
 }
