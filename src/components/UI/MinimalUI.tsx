@@ -9,6 +9,8 @@ interface Props {
   stepIndex: number;
   totalSteps: number;
   headRotation: HeadRotation;
+  guidedMode: boolean;
+  onToggleGuidedMode: () => void;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -101,6 +103,7 @@ function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: n
 export default function MinimalUI({
   activeStep, phase, holdProgress, resonanceProgress,
   stepIndex, totalSteps, headRotation,
+  guidedMode, onToggleGuidedMode,
 }: Props) {
   const orbRotRef = useRef(0);
   const orbRef = useRef<HTMLDivElement>(null);
@@ -173,8 +176,8 @@ export default function MinimalUI({
         <div style={{ flex: 1, height: "0.5px", background: `linear-gradient(90deg,${W}0.3),transparent)` }} />
       </div>
 
-      {/* ── HORIZON DIAL (roll steps only) ──────────────────────── */}
-      {activeStep.axis === "roll" && (
+      {/* ── HORIZON DIAL (guided roll steps only) ───────────────── */}
+      {guidedMode && activeStep.axis === "roll" && (
         <HorizonDial
           roll={headRotation.roll}
           targetRoll={activeStep.target}
@@ -183,7 +186,7 @@ export default function MinimalUI({
       )}
 
       {/* ── RESONANCE BURST RINGS ───────────────────────────────── */}
-      {isResonating && [0, 1, 2].map((i) => (
+      {guidedMode && isResonating && [0, 1, 2].map((i) => (
         <div key={i} style={{
           position: "fixed", top: "50%", left: "50%",
           width: "120px", height: "120px",
@@ -195,6 +198,29 @@ export default function MinimalUI({
         }} />
       ))}
 
+      {/* ── GUIDE MODE TOGGLE ───────────────────────────────────── */}
+      <div
+        onClick={onToggleGuidedMode}
+        style={{
+          position: "fixed", top: "50%", left: "50%",
+          transform: "translate(-50%, calc(-50% - 96px))",
+          zIndex: 200, pointerEvents: "auto", cursor: "pointer",
+          width: "26px", height: "26px", borderRadius: "50%",
+          background: guidedMode ? `${W}0.85)` : "rgba(255,248,240,0.65)",
+          border: `1px solid ${W}${guidedMode ? "0.8" : "0.25"})`,
+          backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "9px", letterSpacing: "0.05em",
+          color: guidedMode ? "rgba(255,248,240,0.95)" : `${CR}0.5)`,
+          fontFamily: "'DM Sans', sans-serif", fontWeight: 300,
+          transition: "all 0.3s",
+          boxShadow: guidedMode ? `0 0 10px ${W}0.4)` : "none",
+          userSelect: "none",
+        }}
+      >
+        导
+      </div>
+
       {/* ── CENTRAL GUIDE ───────────────────────────────────────── */}
       <div style={{
         position: "fixed", top: "50%", left: "50%",
@@ -205,19 +231,19 @@ export default function MinimalUI({
         {/* Ring + arrow */}
         <div style={{ position: "relative", width: "120px", height: "120px" }}>
 
-          {/* SVG: track + hold fill ring */}
+          {/* SVG: track + hold fill ring (guided only) */}
           <svg width="120" height="120" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-            {/* track */}
             <circle cx="60" cy="60" r={R} fill="none" stroke={`${W}0.1)`} strokeWidth="1.5" />
-            {/* hold progress arc */}
-            <circle
-              cx="60" cy="60" r={R} fill="none"
-              stroke={isResonating ? `${W}0.9)` : inZone ? `${W}0.65)` : `${W}0.18)`}
-              strokeWidth={isResonating ? "2.5" : inZone ? "2" : "1"}
-              strokeDasharray={`${CIRC * holdProgress} ${CIRC}`}
-              strokeLinecap="round"
-              style={{ transition: "stroke 0.4s, stroke-width 0.3s" }}
-            />
+            {guidedMode && (
+              <circle
+                cx="60" cy="60" r={R} fill="none"
+                stroke={isResonating ? `${W}0.9)` : inZone ? `${W}0.65)` : `${W}0.18)`}
+                strokeWidth={isResonating ? "2.5" : inZone ? "2" : "1"}
+                strokeDasharray={`${CIRC * holdProgress} ${CIRC}`}
+                strokeLinecap="round"
+                style={{ transition: "stroke 0.4s, stroke-width 0.3s" }}
+              />
+            )}
           </svg>
 
           {/* Resonance scale ring (expands) */}
@@ -244,13 +270,13 @@ export default function MinimalUI({
             transition: "all 0.5s",
           }} />
 
-          {/* Direction arrow — fades when holding */}
-          {!isResonating && (
+          {/* Direction arrow — guided mode only, fades when holding */}
+          {guidedMode && !isResonating && (
             <Arrow dir={activeStep.arrowDir} faded={phase === "hold" && holdProgress > 0.4} />
           )}
 
-          {/* Resonance checkmark */}
-          {isResonating && (
+          {/* Resonance sparkle — guided mode only */}
+          {guidedMode && isResonating && (
             <div style={{
               position: "absolute", top: "50%", left: "50%",
               transform: "translate(-50%, -50%)",
@@ -259,31 +285,32 @@ export default function MinimalUI({
           )}
         </div>
 
-        {/* Label */}
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "5px" }}>
-          <span style={{
-            fontSize: "13px", letterSpacing: "0.14em",
-            color: inZone ? `${W}0.9)` : `${CR}0.55)`,
-            fontFamily: "'DM Serif Display', serif", fontStyle: "italic",
-            animation: phase === "guide" ? "breathe 3s ease-in-out infinite" : "none",
-            transition: "color 0.5s",
-          }}>
-            {isResonating ? "共振" : phase === "hold" ? "保持" : activeStep.label}
-          </span>
-          <span style={{
-            fontSize: "8px", letterSpacing: "0.28em",
-            color: `${CR}0.3)`, fontFamily: "monospace",
-            opacity: isResonating ? 0 : 1, transition: "opacity 0.3s",
-          }}>
-            {phase === "hold"
-              ? `HOLD · ${Math.round(holdProgress * 100)}%`
-              : activeStep.cue.toUpperCase()}
-          </span>
-        </div>
+        {/* Label — guided mode only */}
+        {guidedMode && !isResonating && (
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "5px" }}>
+            <span style={{
+              fontSize: "13px", letterSpacing: "0.14em",
+              color: inZone ? `${W}0.9)` : `${CR}0.55)`,
+              fontFamily: "'DM Serif Display', serif", fontStyle: "italic",
+              animation: phase === "guide" ? "breathe 3s ease-in-out infinite" : "none",
+              transition: "color 0.5s",
+            }}>
+              {phase === "hold" ? "保持" : activeStep.label}
+            </span>
+            <span style={{
+              fontSize: "8px", letterSpacing: "0.28em",
+              color: `${CR}0.3)`, fontFamily: "monospace",
+            }}>
+              {phase === "hold"
+                ? `HOLD · ${Math.round(holdProgress * 100)}%`
+                : activeStep.cue.toUpperCase()}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* ── STEP PROGRESS DOTS (bottom center) ─────────────────── */}
-      <div style={{
+      {/* ── STEP PROGRESS DOTS (guided mode, bottom center) ────── */}
+      {guidedMode && <div style={{
         position: "fixed", bottom: "2rem", left: "50%",
         transform: "translateX(-50%)",
         zIndex: 100, pointerEvents: "none",
@@ -306,7 +333,7 @@ export default function MinimalUI({
             }} />
           );
         })}
-      </div>
+      </div>}
 
       {/* ── AURA ORB (bottom right) ─────────────────────────────── */}
       <div style={{

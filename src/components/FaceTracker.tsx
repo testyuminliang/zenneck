@@ -40,6 +40,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             },
             runningMode: "VIDEO",
             numFaces: 1,
+            outputFacialTransformationMatrixes: true,
           });
           faceLandmarkerRef.current = landmarker;
 
@@ -77,25 +78,33 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
           const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, Date.now());
 
           if (results.faceLandmarks?.length > 0) {
-            const lm = results.faceLandmarks[0];
             let roll = 0, pitch = 0, yaw = 0;
 
-            if (lm.length >= 468) {
-              const leftEye  = lm[33];
-              const rightEye = lm[263];
-              const noseTip  = lm[1];
-              const chin     = lm[152];
-
-              // Roll: head tilt from eye line
-              roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * (180 / Math.PI);
-
-              // Pitch: nose Y relative to eye midpoint, normalized by face height
-              const eyeMidY = (leftEye.y + rightEye.y) / 2;
-              const faceH   = chin.y - eyeMidY;
-              pitch = ((noseTip.y - eyeMidY) / faceH - 0.45) * 150;
-
-              // Yaw: nose horizontal offset from eye center
-              yaw = (noseTip.x - (leftEye.x + rightEye.x) / 2) * 100;
+            // Use 3D face transformation matrix for accurate pitch/yaw/roll
+            const matrices = (results as any).facialTransformationMatrixes;
+            if (matrices?.length > 0) {
+              // MediaPipe returns column-major 4×4 matrix; THREE reads it the same way
+              const m = new THREE.Matrix4().fromArray(matrices[0].data);
+              const euler = new THREE.Euler().setFromRotationMatrix(m, "YXZ");
+              const toDeg = 180 / Math.PI;
+              // Negate yaw/roll for front-camera mirror flip
+              pitch =  euler.x * toDeg;
+              yaw   = -euler.y * toDeg;
+              roll  = -euler.z * toDeg;
+            } else {
+              // Fallback: landmark-based (less reliable for pitch)
+              const lm = results.faceLandmarks[0];
+              if (lm.length >= 468) {
+                const leftEye  = lm[33];
+                const rightEye = lm[263];
+                const noseTip  = lm[1];
+                const chin     = lm[152];
+                roll  = -Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * (180 / Math.PI);
+                const eyeMidY = (leftEye.y + rightEye.y) / 2;
+                const faceH   = chin.y - eyeMidY;
+                pitch = -((noseTip.y - eyeMidY) / faceH - 0.45) * 200;
+                yaw   = -(noseTip.x - (leftEye.x + rightEye.x) / 2) * 280;
+              }
             }
 
             smoothedRollRef.current  = THREE.MathUtils.lerp(smoothedRollRef.current,  roll,  0.4);

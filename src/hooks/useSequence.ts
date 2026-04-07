@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { StepDef, StepPhase, HeadRotation } from "../types";
 
 export const STEPS: StepDef[] = [
-  { id: 0, axis: "roll",  target:  18, tolerance: 3, holdMs: 2500, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
-  { id: 1, axis: "roll",  target: -18, tolerance: 3, holdMs: 2500, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },
-  { id: 2, axis: "pitch", target: -18, tolerance: 5, holdMs: 2500, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
-  { id: 3, axis: "pitch", target:  18, tolerance: 5, holdMs: 2500, label: "低头放松", cue: "look down",   arrowDir: "down"  },
-  { id: 4, axis: "yaw",   target:   6, tolerance: 2, holdMs: 2500, label: "向右转头", cue: "turn right",  arrowDir: "right" },
-  { id: 5, axis: "yaw",   target:  -6, tolerance: 2, holdMs: 2500, label: "向左转头", cue: "turn left",   arrowDir: "left"  },
+  { id: 0, axis: "roll",  target:  25, tolerance: 4, holdMs: 4000, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
+  { id: 1, axis: "roll",  target: -25, tolerance: 4, holdMs: 4000, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },
+  { id: 2, axis: "pitch", target: -22, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
+  { id: 3, axis: "pitch", target:  22, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",   arrowDir: "down"  },
+  { id: 4, axis: "yaw",   target:   8, tolerance: 5, holdMs: 4000, label: "向右转头", cue: "turn right",  arrowDir: "right" },
+  { id: 5, axis: "yaw",   target:  -8, tolerance: 5, holdMs: 4000, label: "向左转头", cue: "turn left",   arrowDir: "left"  },
 ];
 
 const RESONANCE_MS = 1800;

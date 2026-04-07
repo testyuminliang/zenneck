@@ -10,12 +10,27 @@ import "./App.css";
 
 function App() {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
+  const [guidedMode, setGuidedMode] = useState(false);
   const faceTrackerRef = useRef<any>(null);
 
   const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps } =
     useSequence(headRotation);
 
-  const alignmentProgress = phase === "hold" ? holdProgress : phase === "resonance" ? 1 : 0;
+  // In guided mode: curves react to proximity before hold, then hold progress
+  // In free mode: curves react to total head deviation
+  const alignmentProgress = (() => {
+    if (!guidedMode) {
+      const mag = Math.sqrt(headRotation.yaw ** 2 + headRotation.pitch ** 2 + headRotation.roll ** 2);
+      return Math.min(1, mag / 35);
+    }
+    if (phase === "resonance") return 1;
+    if (phase === "hold") return 0.3 + holdProgress * 0.7;
+    // guide phase: proximity to target drives 0–30% convergence
+    const dist = Math.abs(headRotation[activeStep.axis] - activeStep.target);
+    const proximity = Math.max(0, 1 - dist / (activeStep.tolerance * 5));
+    return proximity * 0.3;
+  })();
+
   const isFormed = phase === "resonance";
 
   useEffect(() => {
@@ -57,6 +72,8 @@ function App() {
         stepIndex={stepIndex}
         totalSteps={totalSteps}
         headRotation={headRotation}
+        guidedMode={guidedMode}
+        onToggleGuidedMode={() => setGuidedMode((v) => !v)}
       />
 
       <FaceTracker
