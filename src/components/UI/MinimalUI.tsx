@@ -231,41 +231,108 @@ export default function MinimalUI({ alignmentProgress, isFormed, headRotation }:
         </span>
       </div>
 
-      {/* ── ROLL INDICATOR (thin line, top-left under top bar) ──── */}
+      {/* ── HORIZON INDICATOR (artificial horizon dial) ──── */}
       <div style={{
         position: "fixed", top: "52px", left: "50%",
         transform: "translateX(-50%)",
         zIndex: 100, pointerEvents: "none",
-        display: "flex", alignItems: "center", gap: "8px",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "5px",
       }}>
+        {/* Dial */}
         <div style={{
-          width: "160px", height: "1px",
-          background: `${cream}0.25)`,
           position: "relative",
-          borderRadius: "2px",
+          width: "44px", height: "44px",
         }}>
-          {/* Target zone: ±2° around 18° */}
+          {/* Outer ring */}
           <div style={{
-            position: "absolute",
-            left: `${((18 - 2 + 45) / 90) * 100}%`,
-            width: `${(4 / 90) * 100}%`,
-            top: 0, height: "100%",
-            background: `${clay}0.5)`,
-            borderRadius: "2px",
-          }} />
-          {/* Current thumb */}
-          <div style={{
-            position: "absolute",
-            left: `${((roll + 45) / 90) * 100}%`,
-            top: "-4px",
-            transform: "translateX(-50%)",
-            width: "8px", height: "8px",
+            position: "absolute", inset: 0,
             borderRadius: "50%",
-            background: aligned ? `${warm}0.9)` : `${cream}0.35)`,
-            boxShadow: aligned ? `0 0 8px ${warm}0.6)` : "none",
-            transition: "left 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.5s",
+            border: `1px solid ${cream}0.3)`,
+            background: "rgba(255,248,240,0.45)",
+            backdropFilter: "blur(6px)",
           }} />
+
+          {/* Target ghost line at 18° */}
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: "28px", height: "1px",
+            marginLeft: "-14px", marginTop: "-0.5px",
+            background: `${clay}0.35)`,
+            borderRadius: "1px",
+            transform: `rotate(18deg)`,
+            transformOrigin: "center",
+          }} />
+          {/* Target dots at ends of ghost line */}
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: "3px", height: "3px",
+            borderRadius: "50%",
+            background: `${clay}0.5)`,
+            transform: `rotate(18deg) translateX(12px)`,
+            transformOrigin: "left center",
+            marginTop: "-1.5px",
+          }} />
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: "3px", height: "3px",
+            borderRadius: "50%",
+            background: `${clay}0.5)`,
+            transform: `rotate(198deg) translateX(12px)`,
+            transformOrigin: "left center",
+            marginTop: "-1.5px",
+          }} />
+
+          {/* Live horizon bar — rotates with head roll */}
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: "30px", height: "1.5px",
+            marginLeft: "-15px", marginTop: "-0.75px",
+            background: aligned
+              ? `linear-gradient(90deg, ${warm}0.3), ${warm}0.95), ${warm}0.3))`
+              : `linear-gradient(90deg, ${cream}0.15), ${cream}0.7), ${cream}0.15))`,
+            borderRadius: "2px",
+            transform: `rotate(${roll}deg)`,
+            transformOrigin: "center",
+            transition: "background 0.5s",
+          }} />
+
+          {/* Center pivot dot */}
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: "5px", height: "5px",
+            marginLeft: "-2.5px", marginTop: "-2.5px",
+            borderRadius: "50%",
+            background: aligned ? `${warm}0.9)` : `${cream}0.5)`,
+            boxShadow: aligned ? `0 0 6px ${warm}0.6)` : "none",
+            transition: "background 0.4s, box-shadow 0.4s",
+          }} />
+
+          {/* Aligned glow ring */}
+          {aligned && (
+            <div style={{
+              position: "absolute", inset: 0,
+              borderRadius: "50%",
+              boxShadow: `0 0 10px ${warm}0.25)`,
+              border: `1px solid ${warm}0.4)`,
+            }} />
+          )}
         </div>
+
+        {/* Degree readout */}
+        <span style={{
+          fontSize: "7px",
+          letterSpacing: "0.15em",
+          color: aligned ? `${warm}0.8)` : `${cream}0.35)`,
+          fontFamily: "monospace",
+          transition: "color 0.5s",
+        }}>
+          {roll >= 0 ? "+" : ""}{roll.toFixed(1)}°
+        </span>
       </div>
     </>
   );
