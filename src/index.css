@@ -1,0 +1,41 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Disable text selection on interactive elements */
+button {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Prevent unwanted touch behaviors on mobile */
+@media (hover: none) and (pointer: coarse) {
+  * {
+    -webkit-touch-callout: none;
+  }
+}
