@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
-import ParticleSystem from "./components/ParticleSystem";
-import PostProcessing from "./components/PostProcessing";
+import ResonanceVortex from "./components/ResonanceVortex";
+import PostEffects from "./components/PostEffects";
 import MinimalUI from "./components/UI/MinimalUI";
-import FloatingPhotos from "./components/FloatingPhotos";
 import FaceTracker from "./components/FaceTracker";
 import "./App.css";
 
@@ -15,95 +14,52 @@ interface HeadRotation {
 }
 
 function App() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [headRotation, setHeadRotation] = useState<HeadRotation>({
-    yaw: 0,
-    pitch: 0,
-    roll: 0,
-  });
+  const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
   const [alignmentProgress, setAlignmentProgress] = useState(0);
   const [isFormed, setIsFormed] = useState(false);
-
-  // FaceTracker will update headRotation and alignment progress
   const faceTrackerRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
-      if (faceTrackerRef.current) {
-        faceTrackerRef.current.stop();
-      }
+      if (faceTrackerRef.current) faceTrackerRef.current.stop();
     };
   }, []);
 
   return (
     <div className="app-container">
       <Canvas
-        ref={canvasRef}
-        camera={{
-          position: [0, 0, 5],
-          fov: 75,
-          aspect: window.innerWidth / window.innerHeight,
-          near: 0.1,
-          far: 1000,
-        }}
+        camera={{ position: [0, 0, 6], fov: 50, near: 0.1, far: 100 }}
         gl={{
           antialias: true,
-          alpha: true,
+          alpha: false,
           powerPreference: "high-performance",
-          preserveDrawingBuffer: true,
         }}
-        dpr={window.devicePixelRatio}
-        style={{ width: "100%", height: "100vh" }}
+        dpr={[1, 2]}
+        style={{ background: "#020408" }}
       >
-        {/* Lighting */}
+        {/* Subtle fill lights — curves use LineBasicMaterial so these are accent only */}
         {/* @ts-ignore */}
-        <ambientLight intensity={1.2} />
+        <ambientLight intensity={0.2} />
         {/* @ts-ignore */}
-        <pointLight position={[10, 10, 10]} intensity={1.5} />
-        {/* @ts-ignore */}
-        <pointLight position={[-10, -10, 5]} intensity={0.8} />
+        <pointLight position={[0, 0, 4]} intensity={0.5} color="#D4AF37" />
 
-        {/* Main Scene Components */}
-        <ParticleSystem
-          headRotation={headRotation}
+        <ResonanceVortex
           alignmentProgress={alignmentProgress}
           isFormed={isFormed}
-          setIsFormed={setIsFormed}
+          onFormed={setIsFormed}
         />
 
-        {/* Debug sphere to verify rendering */}
-        {/* @ts-ignore */}
-        <mesh position={[0, 0, 0]}>
-          {/* @ts-ignore */}
-          <sphereGeometry args={[0.2, 16, 16]} />
-          {/* @ts-ignore */}
-          <meshStandardMaterial
-            color="#FFD700"
-            emissive="#FFD700"
-            emissiveIntensity={1}
-          />
-        </mesh>
-
-        <FloatingPhotos />
-
-        {/* Post-processing effects */}
-        <PostProcessing
-          alignmentProgress={alignmentProgress}
-          isFormed={isFormed}
-        />
+        <PostEffects alignmentProgress={alignmentProgress} isFormed={isFormed} />
 
         <Preload all />
       </Canvas>
 
-      {/* Minimal UI overlay */}
       <MinimalUI
         alignmentProgress={alignmentProgress}
         isFormed={isFormed}
         headRotation={headRotation}
       />
 
-      {/* Face Tracking */}
       <FaceTracker
         ref={faceTrackerRef}
         onHeadRotationChange={setHeadRotation}

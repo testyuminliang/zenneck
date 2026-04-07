@@ -167,21 +167,13 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
       };
     }, [onHeadRotationChange, onAlignmentProgressChange, onFormedChange]);
 
+    // Privacy-first: camera feed never visible
     return (
       <video
         ref={videoRef}
-        style={{
-          position: "fixed",
-          bottom: 10,
-          left: 10,
-          width: "120px",
-          height: "90px",
-          borderRadius: "8px",
-          border: "1px solid #FFD700",
-          opacity: 0.3,
-          zIndex: 50,
-          objectFit: "cover",
-        }}
+        style={{ display: "none" }}
+        playsInline
+        muted
       />
     );
   },
