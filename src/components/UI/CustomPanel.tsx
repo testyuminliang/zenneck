@@ -11,6 +11,8 @@ interface Props {
   allSteps: StepDef[];
   onChange: (config: CustomConfig) => void;
   onClose: () => void;
+  onUploadBgm: (file: File) => Promise<void>;
+  onClearBgm: () => Promise<void>;
 }
 
 function StepRow({
@@ -102,7 +104,7 @@ function StepRow({
   );
 }
 
-export default function CustomPanel({ config, allSteps, onChange, onClose }: Props) {
+export default function CustomPanel({ config, allSteps, onChange, onClose, onUploadBgm, onClearBgm }: Props) {
   function setPresetAngle(idx: number, raw: string) {
     const v = parseInt(raw);
     if (isNaN(v)) return;
@@ -193,49 +195,95 @@ export default function CustomPanel({ config, allSteps, onChange, onClose }: Pro
       <div style={{ overflowY: "auto", flex: 1 }}>
 
         {/* ── Section 0: Audio toggles ── */}
-        <div style={{ padding: "12px 16px 10px", display: "flex", gap: "8px" }}>
-          {(["bgmEnabled", "sfxEnabled"] as const).map((key) => {
-            const label = key === "bgmEnabled" ? "背景音乐" : "音效";
-            const on = config[key];
-            return (
+        <div style={{ padding: "12px 16px 10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          {/* BGM / SFX toggles */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {(["bgmEnabled", "sfxEnabled"] as const).map((key) => {
+              const label = key === "bgmEnabled" ? "背景音乐" : "音效";
+              const on = config[key];
+              return (
+                <div
+                  key={key}
+                  onClick={() => onChange({ ...config, [key]: !on })}
+                  style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: "6px", padding: "6px 8px", borderRadius: "9px",
+                    border: `0.5px solid ${on ? `${W}0.35)` : `${CR}0.12)`}`,
+                    background: on ? `${W}0.10)` : `${CR}0.04)`,
+                    cursor: "pointer", transition: "all 0.2s", userSelect: "none",
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
+                    {key === "bgmEnabled" ? (
+                      <>
+                        <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="3.5" cy="8.8" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
+                        <circle cx="8.5" cy="7.3" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
+                      </>
+                    ) : (
+                      <>
+                        <path d="M1.5 7 V4" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                        <path d="M4 8.5 V2.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                        <path d="M6.5 9.5 V1.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                        <path d="M9 8 V3" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                      </>
+                    )}
+                  </svg>
+                  <span style={{
+                    fontSize: "10px", letterSpacing: "0.06em",
+                    color: `${CR}${on ? "0.72" : "0.35"})`,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Custom BGM upload row */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            padding: "6px 10px", borderRadius: "9px",
+            border: `0.5px solid ${config.customBgmName ? `${W}0.28)` : `${CR}0.10)`}`,
+            background: config.customBgmName ? `${W}0.07)` : `${CR}0.03)`,
+          }}>
+            {/* upload icon + label */}
+            <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", flex: 1, minWidth: 0 }}>
+              <input
+                type="file" accept="audio/*"
+                style={{ display: "none" }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) onUploadBgm(f); e.target.value = ""; }}
+              />
+              <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
+                <path d="M5.5 7.5 V2" stroke={`${W}0.6)`} strokeWidth="1.3" strokeLinecap="round" />
+                <path d="M3 4 L5.5 1.5 L8 4" fill="none" stroke={`${W}0.6)`} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M1.5 9 H9.5" stroke={`${CR}0.35)`} strokeWidth="1.1" strokeLinecap="round" />
+              </svg>
+              <span style={{
+                fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif",
+                color: `${CR}${config.customBgmName ? "0.65" : "0.38"})`,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {config.customBgmName ?? "上传音乐"}
+              </span>
+            </label>
+
+            {/* clear button */}
+            {config.customBgmName && (
               <div
-                key={key}
-                onClick={() => onChange({ ...config, [key]: !on })}
+                onClick={onClearBgm}
                 style={{
-                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                  gap: "6px", padding: "6px 8px", borderRadius: "9px",
-                  border: `0.5px solid ${on ? `${W}0.35)` : `${CR}0.12)`}`,
-                  background: on ? `${W}0.10)` : `${CR}0.04)`,
-                  cursor: "pointer", transition: "all 0.2s", userSelect: "none",
+                  flexShrink: 0, width: "16px", height: "16px", borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", background: `${CR}0.08)`,
                 }}
               >
-                {/* icon */}
-                <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
-                  {key === "bgmEnabled" ? (
-                    // music note
-                    <>
-                      <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                      <circle cx="3.5" cy="8.8" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
-                      <circle cx="8.5" cy="7.3" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
-                    </>
-                  ) : (
-                    // sound wave
-                    <>
-                      <path d="M1.5 7 V4" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
-                      <path d="M4 8.5 V2.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
-                      <path d="M6.5 9.5 V1.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
-                      <path d="M9 8 V3" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
-                    </>
-                  )}
+                <svg width="8" height="8" viewBox="0 0 8 8">
+                  <line x1="2" y1="2" x2="6" y2="6" stroke={`${CR}0.45)`} strokeWidth="1.3" strokeLinecap="round" />
+                  <line x1="6" y1="2" x2="2" y2="6" stroke={`${CR}0.45)`} strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
-                <span style={{
-                  fontSize: "10px", letterSpacing: "0.06em",
-                  color: `${on ? CR : CR}${on ? "0.72" : "0.35"})`,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}>{label}</span>
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
 
         {/* divider */}

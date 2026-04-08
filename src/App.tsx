@@ -27,8 +27,19 @@ function App() {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
   const [guidedMode, setGuidedMode] = useState(false);
   const [activePresetIdx, setActivePresetIdx] = useState(1);
-  const [customConfig, setCustomConfig] = useState<CustomConfig>(DEFAULT_CONFIG);
+  const [customConfig, setCustomConfig] = useState<CustomConfig>(() => {
+    try {
+      const saved = localStorage.getItem("zenneck-config");
+      if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+    } catch { /* ignore */ }
+    return DEFAULT_CONFIG;
+  });
   const [showCustomPanel, setShowCustomPanel] = useState(false);
+
+  // Persist config changes to localStorage
+  useEffect(() => {
+    localStorage.setItem("zenneck-config", JSON.stringify(customConfig));
+  }, [customConfig]);
 
   const amplitudeScale = customConfig.presets[activePresetIdx].angle / BASE_ANGLE;
   const activeSteps = customConfig.stepOrder
@@ -41,7 +52,7 @@ function App() {
   const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
     useSequence(headRotation, amplitudeScale, activeSteps);
 
-  const { startBGM, stopBGM, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
+  const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
 
   // BGM：guided mode 且 bgmEnabled 时淡入，否则淡出
   useEffect(() => {
@@ -156,6 +167,14 @@ function App() {
           allSteps={STEPS}
           onChange={setCustomConfig}
           onClose={() => setShowCustomPanel(false)}
+          onUploadBgm={async (file) => {
+            const name = await loadCustomBgm(file);
+            setCustomConfig(c => ({ ...c, customBgmName: name }));
+          }}
+          onClearBgm={async () => {
+            await clearCustomBgm();
+            setCustomConfig(c => ({ ...c, customBgmName: undefined }));
+          }}
         />
       )}
 
