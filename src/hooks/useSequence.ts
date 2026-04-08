@@ -5,13 +5,14 @@ import type { StepDef, StepPhase, HeadRotation } from "../types";
 export const STEPS: StepDef[] = [
   { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 4000, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
   { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 4000, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },
-  { id: 2, axis: "pitch", target: -20, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
+  { id: 2, axis: "pitch", target: -30, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
   { id: 3, axis: "pitch", target:  20, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",   arrowDir: "down"  },
   { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 4000, label: "向右转头", cue: "turn right",  arrowDir: "right" },
   { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 4000, label: "向左转头", cue: "turn left",   arrowDir: "left"  },
 ];
 
 const RESONANCE_MS = 1800;
+const PAUSE_MS     = 600;  // brief pause between steps
 const GRACE_MS = 350; // ms before resetting when user drifts out of zone
 
 export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
@@ -31,6 +32,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
   const stepIndexRef = useRef(0);
   const holdStartRef = useRef<number | null>(null);
   const resonanceStartRef = useRef<number | null>(null);
+  const pauseStartRef = useRef<number | null>(null);
   const lostZoneAtRef = useRef<number | null>(null);
   const holdProgressRef = useRef(0);
   const rafRef = useRef<number>(0);
@@ -85,11 +87,17 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
         setResonanceProgress(rp);
 
         if (rp >= 1) {
+          pauseStartRef.current = now;
+          syncPhase("pause");
+        }
+      } else if (ph === "pause") {
+        if (now - (pauseStartRef.current ?? now) >= PAUSE_MS) {
           const isLast = stepIndexRef.current === STEPS.length - 1;
           const next = isLast ? 0 : stepIndexRef.current + 1;
           stepIndexRef.current = next;
           holdStartRef.current = null;
           resonanceStartRef.current = null;
+          pauseStartRef.current = null;
           lostZoneAtRef.current = null;
           holdProgressRef.current = 0;
           setStepIndex(next);

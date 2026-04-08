@@ -26,7 +26,7 @@ function App() {
       const mag = Math.sqrt(headRotation.yaw ** 2 + headRotation.pitch ** 2 + headRotation.roll ** 2);
       return Math.min(1, mag / 35);
     }
-    if (phase === "resonance") return 1;
+    if (phase === "resonance" || phase === "pause") return 1;
     if (phase === "hold") return 0.3 + holdProgress * 0.7;
     // guide phase: proximity to target drives 0–50% convergence
     const dist = Math.abs(headRotation[activeStep.axis] - activeStep.target);
@@ -34,14 +34,14 @@ function App() {
     return proximity * 0.5;
   })();
 
-  const isFormed = phase === "resonance";
+  const isFormed = phase === "resonance" || phase === "pause";
 
   useEffect(() => {
     if (!isCompleted) return;
     setCompletionPhase('ripple');
-    const t1 = setTimeout(() => setCompletionPhase('clearing'), 2600);
-    const t2 = setTimeout(() => { resetCompleted(); setGuidedMode(false); setCompletionPhase('emerging'); }, 3300);
-    const t3 = setTimeout(() => setCompletionPhase('idle'), 5000);
+    const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
+    const t2 = setTimeout(() => { resetCompleted(); setGuidedMode(false); setCompletionPhase('emerging'); }, 5500);
+    const t3 = setTimeout(() => setCompletionPhase('idle'), 11000);
     return () => [t1, t2, t3].forEach(clearTimeout);
   }, [isCompleted]);
 
@@ -91,14 +91,44 @@ function App() {
         completionPhase={completionPhase}
       />
 
-      {/* ── CLEARING OVERLAY ── fades in/out between completion and free mode */}
+      {/* ── CLEARING OVERLAY ── 渐入后缓缓消退，整个过程不断档 */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: 450,
         background: '#f5ede4',
-        opacity: completionPhase === 'clearing' ? 1 : 0,
-        transition: completionPhase === 'clearing' ? 'opacity 0.5s ease' : 'opacity 0.8s ease',
+        opacity: completionPhase === 'clearing' ? 0.92
+               : completionPhase === 'emerging'  ? 0
+               : 0,
+        transition: completionPhase === 'clearing' ? 'opacity 1.2s ease'
+                  : completionPhase === 'emerging'  ? 'opacity 3.0s ease'
+                  : 'opacity 0.3s ease',
         pointerEvents: 'none',
       }} />
+
+      {/* ── COMPLETION TEXT ── 随覆层浮现，再随主页面一起缓缓退去 */}
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 460, pointerEvents: 'none',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+        opacity: completionPhase === 'clearing' ? 1
+               : completionPhase === 'emerging'  ? 0
+               : 0,
+        transition: completionPhase === 'clearing' ? 'opacity 1.2s ease 0.8s'
+                  : completionPhase === 'emerging'  ? 'opacity 2.0s ease'
+                  : 'opacity 0.3s ease',
+      }}>
+        <span style={{
+          fontSize: '22px', letterSpacing: '0.22em',
+          color: 'rgba(154,88,64,0.82)',
+          fontFamily: "'DM Serif Display', serif",
+          fontStyle: 'italic',
+        }}>练习完成</span>
+        <span style={{
+          fontSize: '8px', letterSpacing: '0.4em',
+          color: 'rgba(154,88,64,0.4)',
+          fontFamily: 'monospace',
+        }}>SESSION COMPLETE</span>
+      </div>
 
       <FaceTracker
         ref={faceTrackerRef}

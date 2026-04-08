@@ -1,5 +1,5 @@
 export type StepAxis = "roll" | "pitch" | "yaw";
-export type StepPhase = "guide" | "hold" | "resonance";
+export type StepPhase = "guide" | "hold" | "resonance" | "pause";
 
 export interface StepDef {
   id: number;
