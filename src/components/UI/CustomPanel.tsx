@@ -192,6 +192,55 @@ export default function CustomPanel({ config, allSteps, onChange, onClose }: Pro
 
       <div style={{ overflowY: "auto", flex: 1 }}>
 
+        {/* ── Section 0: Audio toggles ── */}
+        <div style={{ padding: "12px 16px 10px", display: "flex", gap: "8px" }}>
+          {(["bgmEnabled", "sfxEnabled"] as const).map((key) => {
+            const label = key === "bgmEnabled" ? "背景音乐" : "音效";
+            const on = config[key];
+            return (
+              <div
+                key={key}
+                onClick={() => onChange({ ...config, [key]: !on })}
+                style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: "6px", padding: "6px 8px", borderRadius: "9px",
+                  border: `0.5px solid ${on ? `${W}0.35)` : `${CR}0.12)`}`,
+                  background: on ? `${W}0.10)` : `${CR}0.04)`,
+                  cursor: "pointer", transition: "all 0.2s", userSelect: "none",
+                }}
+              >
+                {/* icon */}
+                <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
+                  {key === "bgmEnabled" ? (
+                    // music note
+                    <>
+                      <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="3.5" cy="8.8" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
+                      <circle cx="8.5" cy="7.3" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
+                    </>
+                  ) : (
+                    // sound wave
+                    <>
+                      <path d="M1.5 7 V4" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                      <path d="M4 8.5 V2.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                      <path d="M6.5 9.5 V1.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                      <path d="M9 8 V3" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
+                    </>
+                  )}
+                </svg>
+                <span style={{
+                  fontSize: "10px", letterSpacing: "0.06em",
+                  color: `${on ? CR : CR}${on ? "0.72" : "0.35"})`,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* divider */}
+        <div style={{ height: "0.5px", background: `${CR}0.08)`, margin: "0 16px" }} />
+
         {/* ── Section 1: Amplitude presets ── */}
         <div style={{ padding: "12px 16px 8px" }}>
           <span style={{

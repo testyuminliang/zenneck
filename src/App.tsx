@@ -19,6 +19,8 @@ const DEFAULT_CONFIG: CustomConfig = {
     { label: "深", angle: 40 },
   ],
   stepOrder: STEPS.map(s => s.id),
+  bgmEnabled: true,
+  sfxEnabled: true,
 };
 
 function App() {
@@ -41,11 +43,11 @@ function App() {
 
   const { startBGM, stopBGM, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
 
-  // BGM：guided mode 开启时淡入，关闭时淡出
+  // BGM：guided mode 且 bgmEnabled 时淡入，否则淡出
   useEffect(() => {
-    if (guidedMode) startBGM();
+    if (guidedMode && customConfig.bgmEnabled) startBGM();
     else stopBGM();
-  }, [guidedMode]);
+  }, [guidedMode, customConfig.bgmEnabled]);
 
   // Phase 转换音效
   const prevPhaseRef = useRef<string>("guide");
@@ -53,19 +55,19 @@ function App() {
     if (!guidedMode) { prevPhaseRef.current = phase; return; }
     const prev = prevPhaseRef.current;
     if (phase === "hold" && prev === "guide") {
-      startCrescendo();
+      if (customConfig.sfxEnabled) startCrescendo();
     } else if (phase === "resonance" && prev === "hold") {
       stopCrescendo();
-      playStepComplete();
+      if (customConfig.sfxEnabled) playStepComplete();
     } else if (phase === "guide" && prev === "hold") {
-      stopCrescendo(); // 用户偏出目标区，渐强音淡出
+      stopCrescendo();
     }
     prevPhaseRef.current = phase;
   }, [phase, guidedMode]);
 
   // 渐强音随 holdProgress 实时更新
   useEffect(() => {
-    if (phase === "hold" && guidedMode) updateCrescendo(holdProgress);
+    if (phase === "hold" && guidedMode && customConfig.sfxEnabled) updateCrescendo(holdProgress);
   }, [holdProgress, phase, guidedMode]);
 
   // In guided mode: curves react to proximity before hold, then hold progress
@@ -92,7 +94,7 @@ function App() {
     if (!isCompleted) return;
     stopCrescendo();
     stopBGM();
-    playSessionComplete();
+    if (customConfig.sfxEnabled) playSessionComplete();
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
     const t2 = setTimeout(() => { resetCompleted(); setGuidedMode(false); setCompletionPhase('emerging'); }, 5500);

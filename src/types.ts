@@ -10,6 +10,8 @@ export interface CustomPreset {
 export interface CustomConfig {
   presets: [CustomPreset, CustomPreset, CustomPreset];
   stepOrder: number[];   // ordered step IDs (subset of all STEPS)
+  bgmEnabled: boolean;
+  sfxEnabled: boolean;
 }
 
 export interface StepDef {
