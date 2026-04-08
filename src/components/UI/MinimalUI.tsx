@@ -24,9 +24,14 @@ const R = 52;
 const CIRC = 2 * Math.PI * R;
 
 // ── Direction arrow (SVG, inside guide circle) ────────────────────────
+const ARROW_ROT: Record<StepDef["arrowDir"], number> = {
+  up: 0, "up-right": 45, right: 90, "down-right": 135,
+  down: 180, "down-left": 225, left: 270, "up-left": 315,
+};
+
 function Arrow({ dir, faded }: { dir: StepDef["arrowDir"]; faded: boolean }) {
   const op = faded ? 0.25 : 0.85;
-  const rot = { right: 90, left: -90, up: 0, down: 180 }[dir];
+  const rot = ARROW_ROT[dir];
   return (
     <svg
       width="32" height="32"
@@ -92,7 +97,7 @@ function HorizonDial({ roll, targetRoll }: { roll: number; targetRoll: number; i
 }
 
 // ── Pitch guide (horizontal bar translates up/down) ───────────────────
-function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number; inZone: boolean }) {
+function PitchDial({ pitch, targetPitch, offsetX = 0 }: { pitch: number; targetPitch: number; inZone: boolean; offsetX?: number }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
   const toY = (v: number) => clamp(v, 45) / 45 * 15;
   const liveY  = toY(pitch);
@@ -101,7 +106,7 @@ function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number;
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
-      transform: "translateX(-50%)",
+      transform: `translateX(calc(-50% + ${offsetX}px))`,
       zIndex: 100, pointerEvents: "none",
       display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
     }}>
@@ -122,7 +127,7 @@ function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number;
 }
 
 // ── Yaw guide (vertical bar translates left/right) ────────────────────
-function YawDial({ yaw, targetYaw }: { yaw: number; targetYaw: number; inZone: boolean }) {
+function YawDial({ yaw, targetYaw, offsetX = 0 }: { yaw: number; targetYaw: number; inZone: boolean; offsetX?: number }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
   const toX = (v: number) => clamp(v, 20) / 20 * 15;
   const liveX  = toX(yaw);
@@ -131,7 +136,7 @@ function YawDial({ yaw, targetYaw }: { yaw: number; targetYaw: number; inZone: b
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
-      transform: "translateX(-50%)",
+      transform: `translateX(calc(-50% + ${offsetX}px))`,
       zIndex: 100, pointerEvents: "none",
       display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
     }}>
@@ -237,11 +242,18 @@ export default function MinimalUI({
       {guidedMode && activeStep.axis === "roll" && (
         <HorizonDial roll={headRotation.roll} targetRoll={activeStep.target} inZone={inZone} />
       )}
-      {guidedMode && activeStep.axis === "pitch" && (
+      {guidedMode && activeStep.axis === "pitch" && !activeStep.axis2 && (
         <PitchDial pitch={headRotation.pitch} targetPitch={activeStep.target} inZone={inZone} />
       )}
-      {guidedMode && activeStep.axis === "yaw" && (
+      {guidedMode && activeStep.axis === "yaw" && !activeStep.axis2 && (
         <YawDial yaw={headRotation.yaw} targetYaw={activeStep.target} inZone={inZone} />
+      )}
+      {/* diagonal: yaw + pitch side-by-side */}
+      {guidedMode && activeStep.axis === "yaw" && activeStep.axis2 === "pitch" && (
+        <>
+          <YawDial   yaw={headRotation.yaw}     targetYaw={activeStep.target}           inZone={inZone} offsetX={-30} />
+          <PitchDial pitch={headRotation.pitch}  targetPitch={activeStep.target2 ?? 0}  inZone={inZone} offsetX={30}  />
+        </>
       )}
 
       {/* ── RESONANCE BURST RINGS ───────────────────────────────── */}

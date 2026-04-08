@@ -3,12 +3,16 @@ import type { StepDef, StepPhase, HeadRotation } from "../types";
 
 // Base targets at 1× scale. Amplitude presets: 轻 0.65× → ~13°, 中 1.0× → 20°, 大 2.0× → 40°
 export const STEPS: StepDef[] = [
-  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 4000, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
-  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 4000, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },
-  { id: 2, axis: "pitch", target: -30, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",     arrowDir: "up"    },
-  { id: 3, axis: "pitch", target:  20, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",   arrowDir: "down"  },
-  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 4000, label: "向右转头", cue: "turn right",  arrowDir: "right" },
-  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 4000, label: "向左转头", cue: "turn left",   arrowDir: "left"  },
+  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 4000, label: "向右侧倾", cue: "tilt right",   arrowDir: "right"       },
+  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 4000, label: "向左侧倾", cue: "tilt left",    arrowDir: "left"        },
+  { id: 2, axis: "pitch", target: -33, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",      arrowDir: "up"          },
+  { id: 3, axis: "pitch", target:  33, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
+  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 4000, label: "向右转头", cue: "turn right",   arrowDir: "right"       },
+  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 4000, label: "向左转头", cue: "turn left",    arrowDir: "left"        },
+  { id: 6, axis: "yaw",   target:  25, tolerance: 5, holdMs: 4000, label: "右上方转头", cue: "look up-right",   arrowDir: "up-right",   axis2: "pitch", target2: -20 },
+  { id: 7, axis: "yaw",   target: -25, tolerance: 5, holdMs: 4000, label: "左上方转头", cue: "look up-left",    arrowDir: "up-left",    axis2: "pitch", target2: -20 },
+  { id: 8, axis: "yaw",   target:  25, tolerance: 5, holdMs: 4000, label: "右下方转头", cue: "look down-right", arrowDir: "down-right", axis2: "pitch", target2:  20 },
+  { id: 9, axis: "yaw",   target: -25, tolerance: 5, holdMs: 4000, label: "左下方转头", cue: "look down-left",  arrowDir: "down-left",  axis2: "pitch", target2:  20 },
 ];
 
 const RESONANCE_MS = 1800;
@@ -48,8 +52,14 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
       const rot = rotRef.current;
       const value = rot[step.axis];
       const scaledTarget = step.target * scaleRef.current;
+      const inZone1 = scaledTarget > 0 ? value >= scaledTarget : value <= scaledTarget;
+      const inZone2 = step.axis2 == null ? true : (() => {
+        const v2 = rot[step.axis2];
+        const st2 = (step.target2 ?? 0) * scaleRef.current;
+        return st2 > 0 ? v2 >= st2 : v2 <= st2;
+      })();
       // In-zone: reached or passed the target line (same sign = same direction)
-      const inZone = scaledTarget > 0 ? value >= scaledTarget : value <= scaledTarget;
+      const inZone = inZone1 && inZone2;
 
       const ph = phaseRef.current;
 
@@ -115,7 +125,12 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
   }, []); // stable — all data accessed via refs
 
   const rawStep = STEPS[stepIndex];
-  const activeStep = { ...rawStep, target: rawStep.target * amplitudeScale, tolerance: rawStep.tolerance * amplitudeScale };
+  const activeStep = {
+    ...rawStep,
+    target: rawStep.target * amplitudeScale,
+    tolerance: rawStep.tolerance * amplitudeScale,
+    ...(rawStep.target2 !== undefined ? { target2: rawStep.target2 * amplitudeScale } : {}),
+  };
 
   return {
     stepIndex,
