@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { StepDef, StepPhase, HeadRotation } from "../types";
 
-// Base targets at 1× scale. Amplitude presets: 轻 0.65× → ~13°, 中 1.0× → 20°, 大 1.5× → 30°
+// Base targets at 1× scale. Amplitude presets: 轻 0.65× → ~13°, 中 1.0× → 20°, 大 2.0× → 40°
 export const STEPS: StepDef[] = [
   { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 4000, label: "向右侧倾", cue: "tilt right",  arrowDir: "right" },
   { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 4000, label: "向左侧倾", cue: "tilt left",   arrowDir: "left"  },

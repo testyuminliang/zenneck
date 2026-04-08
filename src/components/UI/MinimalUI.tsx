@@ -168,7 +168,7 @@ function YawDial({ yaw, targetYaw, inZone }: { yaw: number; targetYaw: number; i
 const AMPLITUDE_PRESETS = [
   { label: "轻", scale: 0.65 },
   { label: "中", scale: 1.0  },
-  { label: "大", scale: 1.5  },
+  { label: "大", scale: 2.0  },
 ];
 
 export default function MinimalUI({
@@ -229,17 +229,13 @@ export default function MinimalUI({
           100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
         }
         @keyframes completion-ring {
-          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.9; }
-          100% { transform: translate(-50%,-50%) scale(6);   opacity: 0; }
-        }
-        @keyframes completion-fade-in {
-          0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.85); }
-          40%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-          80%  { opacity: 1; }
-          100% { opacity: 0; }
+          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.75; }
+          60%  { opacity: 0.35; }
+          100% { transform: translate(-50%,-50%) scale(8);   opacity: 0; }
         }
       `}</style>
 
+      {!showCompletion && <>
       {/* ── TOP BAR ─────────────────────────────────────────────── */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
@@ -482,41 +478,20 @@ export default function MinimalUI({
           })}
         </div>
       </div>
+      </>}
 
       {/* ── COMPLETION OVERLAY ──────────────────────────────────── */}
-      {showCompletion && <>
-        {/* 6 rings expanding outward, staggered */}
-        {[0,1,2,3,4,5].map((i) => (
-          <div key={i} style={{
-            position: "fixed", top: "50%", left: "50%",
-            width: "120px", height: "120px",
-            marginLeft: "-60px", marginTop: "-60px",
-            borderRadius: "50%",
-            border: `1.5px solid ${W}${(0.9 - i * 0.1).toFixed(2)})`,
-            animation: `completion-ring 2.8s ease-out ${i * 0.18}s forwards`,
-            pointerEvents: "none", zIndex: 400,
-          }} />
-        ))}
-        {/* Central message */}
-        <div style={{
+      {showCompletion && [0,1,2,3,4,5,6,7].map((i) => (
+        <div key={i} style={{
           position: "fixed", top: "50%", left: "50%",
-          transform: "translate(-50%,-50%)",
-          zIndex: 401, pointerEvents: "none",
-          display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
-          animation: "completion-fade-in 3.5s ease forwards",
-        }}>
-          <div style={{ fontSize: "32px", color: `${W}0.9)` }}>✦</div>
-          <span style={{
-            fontSize: "17px", letterSpacing: "0.22em",
-            color: `${W}0.88)`, fontFamily: "'DM Serif Display', serif",
-            fontStyle: "italic",
-          }}>颈椎已重置</span>
-          <span style={{
-            fontSize: "8px", letterSpacing: "0.35em",
-            color: `${CR}0.45)`, fontFamily: "monospace",
-          }}>NECK · SPINE RESET</span>
-        </div>
-      </>}
+          width: "120px", height: "120px",
+          marginLeft: "-60px", marginTop: "-60px",
+          borderRadius: "50%",
+          border: `${1.5 - i * 0.1}px solid ${W}${(0.8 - i * 0.08).toFixed(2)})`,
+          animation: `completion-ring ${3.2 + i * 0.15}s ease-out ${i * 0.22}s forwards`,
+          pointerEvents: "none", zIndex: 400,
+        }} />
+      ))}
     </>
   );
 }
