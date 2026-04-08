@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import type { StepDef, StepPhase, HeadRotation } from "../../types";
 
 interface Props {
@@ -165,39 +164,8 @@ export default function MinimalUI({
   amplitudeScale, onAmplitudeChange,
   completionPhase,
 }: Props) {
-  const orbRotRef = useRef(0);
-  const orbRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<number>(0);
-
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
   const isResonating = phase === "resonance" || phase === "pause";
-
-  // Orb rAF loop
-  useEffect(() => {
-    const tick = () => {
-      orbRotRef.current += 0.4;
-      if (orbRef.current) {
-        const hue1 = isResonating ? 35 : 18 + holdProgress * 12;
-        const hue2 = isResonating ? 28 : 15;
-        const sat  = 55 + holdProgress * 25;
-        const glow = 0.55 + holdProgress * 0.35;
-        orbRef.current.style.background = `conic-gradient(
-          from ${orbRotRef.current}deg,
-          hsl(${hue1},${sat}%,52%),
-          hsl(${hue2},${sat - 10}%,38%),
-          hsl(${hue1 + 15},${sat}%,48%),
-          hsl(${hue1},${sat}%,52%)
-        )`;
-        orbRef.current.style.boxShadow = `
-          0 0 ${12 + holdProgress * 24}px ${W}${glow}),
-          inset 0 0 ${8 + holdProgress * 16}px ${W}0.3)
-        `;
-      }
-      animRef.current = requestAnimationFrame(tick);
-    };
-    animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [holdProgress, isResonating]);
 
   // How many rings to show during resonance
   const ringScale = 1 + resonanceProgress * 3.5;
@@ -232,6 +200,11 @@ export default function MinimalUI({
           0%   { transform: scale(1);   opacity: 0.75; }
           60%  { opacity: 0.35; }
           100% { transform: scale(8);   opacity: 0; }
+        }
+        @keyframes hint-cycle {
+          0%,40%   { opacity: 0.55; transform: translateY(0px); }
+          50%      { opacity: 0.8;  transform: translateY(-1px); }
+          60%,100% { opacity: 0.55; transform: translateY(0px); }
         }
       `}</style>
 
@@ -401,6 +374,69 @@ export default function MinimalUI({
           </>)}
         </div>
 
+      {/* ── FREE MODE HINTS — below circle ──────────────────────── */}
+      {!guidedMode && (
+        <div style={{
+          position: "fixed", top: "50%", left: "50%",
+          transform: "translateX(-50%)",
+          marginTop: "82px",
+          zIndex: 100, pointerEvents: "none",
+          textAlign: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
+          width: "220px",
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
+            <span style={{
+              fontSize: "14px", letterSpacing: "0.12em",
+              color: `${CR}0.7)`,
+              fontFamily: "'DM Serif Display', serif", fontStyle: "italic",
+              animation: "hint-cycle 4s ease-in-out infinite",
+            }}>
+              轻轻转动你的头部
+            </span>
+            <span style={{
+              fontSize: "9px", letterSpacing: "0.22em",
+              color: `${CR}0.42)`, fontFamily: "monospace",
+              animation: "hint-cycle 4s ease-in-out infinite 0.3s",
+            }}>
+              EXPLORE THE SPACE
+            </span>
+          </div>
+          <div style={{ width: "1px", height: "12px", background: `${W}0.3)` }} />
+          <span style={{
+            fontSize: "11px", letterSpacing: "0.18em",
+            color: `${W}0.7)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+            animation: "hint-cycle 4s ease-in-out infinite 1.8s",
+          }}>
+            点击圆圈开始引导练习
+          </span>
+        </div>
+      )}
+
+      {/* ── CAMERA PERMISSION NOTICE (free mode only) ───────────── */}
+      {!guidedMode && (
+        <div style={{
+          position: "fixed", top: "52px", left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 100, pointerEvents: "none",
+          display: "flex", alignItems: "center", gap: "6px",
+        }}>
+          <div style={{
+            width: "5px", height: "5px", borderRadius: "50%",
+            background: `${W}0.55)`,
+            animation: "breathe 3s ease-in-out infinite",
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontSize: "9px", letterSpacing: "0.14em",
+            color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+            lineHeight: 1.6,
+          }}>
+            请确保摄像头权限已开启
+          </span>
+        </div>
+      )}
+
       {/* ── STEP LABEL — fixed below circle ────────────────────── */}
       {guidedMode && !isResonating && (
         <div style={{
@@ -458,72 +494,44 @@ export default function MinimalUI({
         })}
       </div>}
 
-      {/* ── AURA ORB (bottom right) ─────────────────────────────── */}
+      {/* ── AMPLITUDE PRESETS (bottom right) ────────────────────── */}
       <div style={{
         position: "fixed", bottom: "1.8rem", right: "1.8rem",
         zIndex: 100, pointerEvents: "auto",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+        display: "flex", gap: "4px",
         background: "rgba(255,248,240,0.55)",
         backdropFilter: "blur(10px)",
-        borderRadius: "56px",
-        padding: "14px 14px 8px",
+        borderRadius: "14px",
+        padding: "8px",
         border: `0.5px solid ${W}0.2)`,
       }}>
-        <div style={{ position: "relative", width: "64px", height: "64px" }}>
-          <div style={{
-            position: "absolute", inset: "-12px", borderRadius: "50%",
-            background: `radial-gradient(circle,${W}${(0.07 + holdProgress * 0.18).toFixed(2)}) 0%,transparent 70%)`,
-            filter: "blur(8px)", transition: "background 0.6s",
-          }} />
-          <div ref={orbRef} style={{ width: "64px", height: "64px", borderRadius: "50%", opacity: 0.85, filter: "blur(0.5px)" }} />
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 30%,rgba(255,240,225,0.18) 0%,transparent 60%)",
-          }} />
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            border: `0.5px solid ${W}${inZone ? "0.5" : "0.18"})`,
-            transition: "border-color 0.6s",
-          }} />
-        </div>
-        <span style={{
-          fontSize: "7px", letterSpacing: "0.2em", fontFamily: "monospace",
-          color: inZone ? `${W}0.7)` : `${CR}0.22)`,
-          transition: "color 0.6s",
-        }}>
-          {isResonating ? "RESONANT" : inZone ? "ALIGNED" : "TRACKING"}
-        </span>
-
-        {/* Amplitude preset selector */}
-        <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
-          {AMPLITUDE_PRESETS.map(({ label, sublabel, scale }) => {
-            const active = Math.abs(amplitudeScale - scale) < 0.01;
-            return (
-              <div
-                key={label}
-                onClick={() => onAmplitudeChange(scale)}
-                style={{
-                  width: "32px", height: "32px", borderRadius: "8px",
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", gap: "1px",
-                  cursor: "pointer",
-                  background: active ? `${W}0.85)` : "rgba(255,248,240,0.5)",
-                  border: `1px solid ${W}${active ? "0.7" : "0.2"})`,
-                  transition: "all 0.25s",
-                  userSelect: "none",
-                }}
-              >
-                <span style={{ fontSize: "8px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{label}</span>
-                <span style={{ fontSize: "6px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{sublabel}</span>
-              </div>
-            );
-          })}
-        </div>
+        {AMPLITUDE_PRESETS.map(({ label, sublabel, scale }) => {
+          const active = Math.abs(amplitudeScale - scale) < 0.01;
+          return (
+            <div
+              key={label}
+              onClick={() => onAmplitudeChange(scale)}
+              style={{
+                width: "40px", height: "40px", borderRadius: "8px",
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: "1px",
+                cursor: "pointer",
+                background: active ? `${W}0.85)` : "rgba(255,248,240,0.5)",
+                border: `1px solid ${W}${active ? "0.7" : "0.2"})`,
+                transition: "all 0.25s",
+                userSelect: "none",
+              }}
+            >
+              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{label}</span>
+              <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{sublabel}</span>
+            </div>
+          );
+        })}
       </div>
       </div>
 
       {/* ── COMPLETION RIPPLES ──────────────────────────────────── */}
-      {completionPhase === 'ripple' && [0,1,2,3,4,5,6,7].map((i) => (
+      {(completionPhase === 'ripple' || completionPhase === 'clearing') && [0,1,2,3,4,5,6,7].map((i) => (
         <div key={i} style={{
           position: "fixed", top: "50%", left: "50%",
           width: "120px", height: "120px",
