@@ -1,4 +1,4 @@
-import type { StepDef, StepPhase, HeadRotation } from "../../types";
+import type { StepDef, StepPhase, HeadRotation, CustomConfig } from "../../types";
 
 interface Props {
   activeStep: StepDef;
@@ -10,8 +10,10 @@ interface Props {
   headRotation: HeadRotation;
   guidedMode: boolean;
   onToggleGuidedMode: () => void;
-  amplitudeScale: number;
-  onAmplitudeChange: (scale: number) => void;
+  activePresetIdx: number;
+  onPresetChange: (idx: number) => void;
+  customConfig: CustomConfig;
+  onCustomOpen: () => void;
   completionPhase: 'idle' | 'ripple' | 'clearing' | 'emerging';
 }
 
@@ -156,17 +158,12 @@ function YawDial({ yaw, targetYaw, offsetX = 0 }: { yaw: number; targetYaw: numb
   );
 }
 
-const AMPLITUDE_PRESETS = [
-  { label: "轻", sublabel: "13°", scale: 0.65 },
-  { label: "中", sublabel: "20°", scale: 1.0  },
-  { label: "深", sublabel: "40°", scale: 2.0  },
-];
 
 export default function MinimalUI({
   activeStep, phase, holdProgress, resonanceProgress,
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
-  amplitudeScale, onAmplitudeChange,
+  activePresetIdx, onPresetChange, customConfig, onCustomOpen,
   completionPhase,
 }: Props) {
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
@@ -517,12 +514,12 @@ export default function MinimalUI({
         padding: "8px",
         border: `0.5px solid ${W}0.2)`,
       }}>
-        {AMPLITUDE_PRESETS.map(({ label, sublabel, scale }) => {
-          const active = Math.abs(amplitudeScale - scale) < 0.01;
+        {customConfig.presets.map((preset, idx) => {
+          const active = idx === activePresetIdx;
           return (
             <div
-              key={label}
-              onClick={() => onAmplitudeChange(scale)}
+              key={idx}
+              onClick={() => onPresetChange(idx)}
               style={{
                 width: "40px", height: "40px", borderRadius: "8px",
                 display: "flex", flexDirection: "column",
@@ -534,11 +531,28 @@ export default function MinimalUI({
                 userSelect: "none",
               }}
             >
-              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{label}</span>
-              <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{sublabel}</span>
+              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{preset.label}</span>
+              <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{preset.angle}°</span>
             </div>
           );
         })}
+        {/* 定制 button */}
+        <div
+          onClick={onCustomOpen}
+          style={{
+            width: "40px", height: "40px", borderRadius: "8px",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: "1px",
+            cursor: "pointer",
+            background: "rgba(255,248,240,0.5)",
+            border: `1px solid ${W}0.2)`,
+            transition: "all 0.25s",
+            userSelect: "none",
+          }}
+        >
+          <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: `${CR}0.55)` }}>定制</span>
+          <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: `${CR}0.3)` }}>CUSTOM</span>
+        </div>
       </div>
       </div>
 

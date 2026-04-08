@@ -4,20 +4,39 @@ import { Preload } from "@react-three/drei";
 import ResonanceVortex from "./components/ResonanceVortex";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
-import { useSequence } from "./hooks/useSequence";
-import type { HeadRotation } from "./types";
+import CustomPanel from "./components/UI/CustomPanel";
+import { useSequence, STEPS } from "./hooks/useSequence";
+import type { HeadRotation, CustomConfig } from "./types";
 import "./App.css";
+
+const BASE_ANGLE = 20;
+
+const DEFAULT_CONFIG: CustomConfig = {
+  presets: [
+    { label: "轻", angle: 13 },
+    { label: "中", angle: 20 },
+    { label: "深", angle: 40 },
+  ],
+  stepOrder: STEPS.map(s => s.id),
+};
 
 function App() {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
   const [guidedMode, setGuidedMode] = useState(false);
-  const [amplitudeScale, setAmplitudeScale] = useState(1.0);
+  const [activePresetIdx, setActivePresetIdx] = useState(1);
+  const [customConfig, setCustomConfig] = useState<CustomConfig>(DEFAULT_CONFIG);
+  const [showCustomPanel, setShowCustomPanel] = useState(false);
+
+  const amplitudeScale = customConfig.presets[activePresetIdx].angle / BASE_ANGLE;
+  const activeSteps = customConfig.stepOrder
+    .map(id => STEPS.find(s => s.id === id)!)
+    .filter(Boolean);
   type CompletionPhase = 'idle' | 'ripple' | 'clearing' | 'emerging';
   const [completionPhase, setCompletionPhase] = useState<CompletionPhase>('idle');
   const faceTrackerRef = useRef<any>(null);
 
   const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
-    useSequence(headRotation, amplitudeScale);
+    useSequence(headRotation, amplitudeScale, activeSteps);
 
   // In guided mode: curves react to proximity before hold, then hold progress
   // In free mode: curves react to total head deviation
@@ -89,10 +108,21 @@ function App() {
         headRotation={headRotation}
         guidedMode={guidedMode}
         onToggleGuidedMode={() => setGuidedMode((v) => !v)}
-        amplitudeScale={amplitudeScale}
-        onAmplitudeChange={setAmplitudeScale}
+        activePresetIdx={activePresetIdx}
+        onPresetChange={setActivePresetIdx}
+        customConfig={customConfig}
+        onCustomOpen={() => setShowCustomPanel(v => !v)}
         completionPhase={completionPhase}
       />
+
+      {showCustomPanel && (
+        <CustomPanel
+          config={customConfig}
+          allSteps={STEPS}
+          onChange={setCustomConfig}
+          onClose={() => setShowCustomPanel(false)}
+        />
+      )}
 
       {/* ── CLEARING OVERLAY ── 渐入后缓缓消退，整个过程不断档 */}
       <div style={{

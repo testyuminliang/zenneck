@@ -19,11 +19,13 @@ const RESONANCE_MS = 1800;
 const PAUSE_MS     = 600;  // brief pause between steps
 const GRACE_MS = 600; // ms before resetting when user drifts out of zone
 
-export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
+export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, steps = STEPS) {
   const rotRef = useRef(headRotation);
   rotRef.current = headRotation;
   const scaleRef = useRef(amplitudeScale);
   scaleRef.current = amplitudeScale;
+  const stepsRef = useRef(steps);
+  stepsRef.current = steps;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<StepPhase>("guide");
@@ -48,7 +50,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
 
   useEffect(() => {
     const tick = (now: number) => {
-      const step = STEPS[stepIndexRef.current];
+      const step = stepsRef.current[stepIndexRef.current];
       const rot = rotRef.current;
       const value = rot[step.axis];
       const scaledTarget = step.target * scaleRef.current;
@@ -79,7 +81,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
             holdProgressRef.current = 0;
             syncPhase("resonance");
           }
-        } else if (ph === "hold") {
+        } else if (ph === "hold" ) {
           // Grace window — don't reset immediately
           if (!lostZoneAtRef.current) {
             lostZoneAtRef.current = now;
@@ -101,7 +103,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
         }
       } else if (ph === "pause") {
         if (now - (pauseStartRef.current ?? now) >= PAUSE_MS) {
-          const isLast = stepIndexRef.current === STEPS.length - 1;
+          const isLast = stepIndexRef.current === stepsRef.current.length - 1;
           const next = isLast ? 0 : stepIndexRef.current + 1;
           stepIndexRef.current = next;
           holdStartRef.current = null;
@@ -124,7 +126,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
     return () => cancelAnimationFrame(rafRef.current);
   }, []); // stable — all data accessed via refs
 
-  const rawStep = STEPS[stepIndex];
+  const rawStep = steps[stepIndex] ?? steps[0];
   const activeStep = {
     ...rawStep,
     target: rawStep.target * amplitudeScale,
@@ -138,7 +140,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
     phase,
     holdProgress,
     resonanceProgress,
-    totalSteps: STEPS.length,
+    totalSteps: steps.length,
     isCompleted,
     resetCompleted: () => { setIsCompleted(false); syncPhase("guide"); },
   };
