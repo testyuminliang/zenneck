@@ -28,10 +28,13 @@ function App() {
     }
     if (phase === "resonance" || phase === "pause") return 1;
     if (phase === "hold") return 0.3 + holdProgress * 0.7;
-    // guide phase: proximity to target drives 0–50% convergence
-    const dist = Math.abs(headRotation[activeStep.axis] - activeStep.target);
-    const proximity = Math.max(0, 1 - dist / (activeStep.tolerance * 5));
-    return proximity * 0.5;
+    // guide phase: how far along toward the target line (0 at start, 1 at line)
+    const current = headRotation[activeStep.axis];
+    const tgt = activeStep.target;
+    const progress = tgt > 0
+      ? Math.max(0, Math.min(1, current / tgt))
+      : Math.max(0, Math.min(1, current / tgt));
+    return progress * 0.5;
   })();
 
   const isFormed = phase === "resonance" || phase === "pause";

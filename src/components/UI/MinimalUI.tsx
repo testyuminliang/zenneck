@@ -18,7 +18,6 @@ interface Props {
 
 // ── Palette ───────────────────────────────────────────────────────────
 const W  = "rgba(180,95,65,";   // warm terracotta
-const CL = "rgba(130,65,45,";   // clay
 const CR = "rgba(100,60,40,";   // cream-dark (text)
 
 // ── Hold ring geometry ────────────────────────────────────────────────
@@ -49,7 +48,8 @@ function Arrow({ dir, faded }: { dir: StepDef["arrowDir"]; faded: boolean }) {
 }
 
 // ── Tilt guide for roll steps (mini horizon dial) ─────────────────────
-function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: number; inZone: boolean }) {
+function HorizonDial({ roll, targetRoll }: { roll: number; targetRoll: number; inZone: boolean }) {
+  const reached = targetRoll > 0 ? roll >= targetRoll : roll <= targetRoll;
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
@@ -58,20 +58,17 @@ function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: n
       display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
     }}>
       <div style={{ position: "relative", width: "44px", height: "44px" }}>
-        {/* ring */}
-        <div style={{
-          position: "absolute", inset: 0, borderRadius: "50%",
-          border: `1px solid ${CR}0.2)`,
-          background: "rgba(255,248,240,0.45)",
-          backdropFilter: "blur(6px)",
-        }} />
-        {/* target ghost */}
+        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${CR}0.2)`, background: "rgba(255,248,240,0.45)", backdropFilter: "blur(6px)" }} />
+        {/* target line — glows when reached */}
         <div style={{
           position: "absolute", top: "50%", left: "50%",
-          width: "26px", height: "1px",
-          marginLeft: "-13px", marginTop: "-0.5px",
-          background: `${CL}0.3)`,
+          width: "28px", height: reached ? "2px" : "1px",
+          marginLeft: "-14px", marginTop: reached ? "-1px" : "-0.5px",
+          borderRadius: "1px",
+          background: reached ? `${W}0.85)` : `${CR}0.35)`,
+          boxShadow: reached ? `0 0 6px ${W}0.6)` : "none",
           transform: `rotate(${targetRoll}deg)`,
+          transition: "all 0.3s ease",
         }} />
         {/* live bar */}
         <div style={{
@@ -79,24 +76,16 @@ function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: n
           width: "30px", height: "1.5px",
           marginLeft: "-15px", marginTop: "-0.75px",
           borderRadius: "2px",
-          background: inZone
+          background: reached
             ? `linear-gradient(90deg,${W}0.3),${W}0.9),${W}0.3))`
             : `linear-gradient(90deg,${CR}0.1),${CR}0.55),${CR}0.1))`,
           transform: `rotate(${roll}deg)`,
           transition: "background 0.4s",
         }} />
         {/* pivot */}
-        <div style={{
-          position: "absolute", top: "50%", left: "50%",
-          width: "5px", height: "5px",
-          marginLeft: "-2.5px", marginTop: "-2.5px",
-          borderRadius: "50%",
-          background: inZone ? `${W}0.9)` : `${CR}0.35)`,
-          boxShadow: inZone ? `0 0 6px ${W}0.55)` : "none",
-          transition: "all 0.4s",
-        }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: reached ? `${W}0.9)` : `${CR}0.35)`, boxShadow: reached ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
       </div>
-      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: inZone ? `${W}0.75)` : `${CR}0.3)` }}>
+      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: reached ? `${W}0.75)` : `${CR}0.3)` }}>
         {roll >= 0 ? "+" : ""}{roll.toFixed(1)}°
       </span>
     </div>
@@ -104,11 +93,12 @@ function HorizonDial({ roll, targetRoll, inZone }: { roll: number; targetRoll: n
 }
 
 // ── Pitch guide (horizontal bar translates up/down) ───────────────────
-function PitchDial({ pitch, targetPitch, inZone }: { pitch: number; targetPitch: number; inZone: boolean }) {
+function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number; inZone: boolean }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
-  const toY = (v: number) => clamp(v, 45) / 45 * 15; // ° → px offset from center
+  const toY = (v: number) => clamp(v, 45) / 45 * 15;
   const liveY  = toY(pitch);
   const ghostY = toY(targetPitch);
+  const reached = targetPitch > 0 ? pitch >= targetPitch : pitch <= targetPitch;
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
@@ -118,16 +108,14 @@ function PitchDial({ pitch, targetPitch, inZone }: { pitch: number; targetPitch:
     }}>
       <div style={{ position: "relative", width: "44px", height: "44px" }}>
         <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${CR}0.2)`, background: "rgba(255,248,240,0.45)", backdropFilter: "blur(6px)" }} />
-        {/* center axis line (vertical guide) */}
         <div style={{ position: "absolute", top: "8px", left: "50%", width: "1px", height: "28px", marginLeft: "-0.5px", background: `${CR}0.1)` }} />
-        {/* target ghost bar */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", width: "26px", height: "1px", marginLeft: "-13px", marginTop: `calc(-0.5px + ${ghostY}px)`, background: `${CL}0.3)` }} />
+        {/* target line — glows when reached */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "28px", height: reached ? "2px" : "1px", marginLeft: "-14px", marginTop: `calc(${reached ? "-1px" : "-0.5px"} + ${ghostY}px)`, borderRadius: "1px", background: reached ? `${W}0.85)` : `${CR}0.35)`, boxShadow: reached ? `0 0 6px ${W}0.6)` : "none", transition: "all 0.3s ease" }} />
         {/* live bar */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", width: "30px", height: "1.5px", marginLeft: "-15px", marginTop: `calc(-0.75px + ${liveY}px)`, borderRadius: "2px", background: inZone ? `linear-gradient(90deg,${W}0.3),${W}0.9),${W}0.3))` : `linear-gradient(90deg,${CR}0.1),${CR}0.55),${CR}0.1))`, transition: "background 0.4s" }} />
-        {/* pivot */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: inZone ? `${W}0.9)` : `${CR}0.35)`, boxShadow: inZone ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "30px", height: "1.5px", marginLeft: "-15px", marginTop: `calc(-0.75px + ${liveY}px)`, borderRadius: "2px", background: reached ? `linear-gradient(90deg,${W}0.3),${W}0.9),${W}0.3))` : `linear-gradient(90deg,${CR}0.1),${CR}0.55),${CR}0.1))`, transition: "background 0.4s" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: reached ? `${W}0.9)` : `${CR}0.35)`, boxShadow: reached ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
       </div>
-      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: inZone ? `${W}0.75)` : `${CR}0.3)` }}>
+      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: reached ? `${W}0.75)` : `${CR}0.3)` }}>
         {pitch >= 0 ? "+" : ""}{pitch.toFixed(1)}°
       </span>
     </div>
@@ -135,11 +123,12 @@ function PitchDial({ pitch, targetPitch, inZone }: { pitch: number; targetPitch:
 }
 
 // ── Yaw guide (vertical bar translates left/right) ────────────────────
-function YawDial({ yaw, targetYaw, inZone }: { yaw: number; targetYaw: number; inZone: boolean }) {
+function YawDial({ yaw, targetYaw }: { yaw: number; targetYaw: number; inZone: boolean }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
-  const toX = (v: number) => clamp(v, 20) / 20 * 15; // ° → px offset from center
+  const toX = (v: number) => clamp(v, 20) / 20 * 15;
   const liveX  = toX(yaw);
   const ghostX = toX(targetYaw);
+  const reached = targetYaw > 0 ? yaw >= targetYaw : yaw <= targetYaw;
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
@@ -149,16 +138,14 @@ function YawDial({ yaw, targetYaw, inZone }: { yaw: number; targetYaw: number; i
     }}>
       <div style={{ position: "relative", width: "44px", height: "44px" }}>
         <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1px solid ${CR}0.2)`, background: "rgba(255,248,240,0.45)", backdropFilter: "blur(6px)" }} />
-        {/* center axis line (horizontal guide) */}
         <div style={{ position: "absolute", left: "8px", top: "50%", height: "1px", width: "28px", marginTop: "-0.5px", background: `${CR}0.1)` }} />
-        {/* target ghost bar */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", width: "1px", height: "26px", marginTop: "-13px", marginLeft: `calc(-0.5px + ${ghostX}px)`, background: `${CL}0.3)` }} />
+        {/* target line — glows when reached */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: reached ? "2px" : "1px", height: "28px", marginTop: "-14px", marginLeft: `calc(${reached ? "-1px" : "-0.5px"} + ${ghostX}px)`, borderRadius: "1px", background: reached ? `${W}0.85)` : `${CR}0.35)`, boxShadow: reached ? `0 0 6px ${W}0.6)` : "none", transition: "all 0.3s ease" }} />
         {/* live bar */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", width: "1.5px", height: "30px", marginTop: "-15px", marginLeft: `calc(-0.75px + ${liveX}px)`, borderRadius: "2px", background: inZone ? `linear-gradient(180deg,${W}0.3),${W}0.9),${W}0.3))` : `linear-gradient(180deg,${CR}0.1),${CR}0.55),${CR}0.1))`, transition: "background 0.4s" }} />
-        {/* pivot */}
-        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: inZone ? `${W}0.9)` : `${CR}0.35)`, boxShadow: inZone ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "1.5px", height: "30px", marginTop: "-15px", marginLeft: `calc(-0.75px + ${liveX}px)`, borderRadius: "2px", background: reached ? `linear-gradient(180deg,${W}0.3),${W}0.9),${W}0.3))` : `linear-gradient(180deg,${CR}0.1),${CR}0.55),${CR}0.1))`, transition: "background 0.4s" }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: "5px", height: "5px", marginLeft: "-2.5px", marginTop: "-2.5px", borderRadius: "50%", background: reached ? `${W}0.9)` : `${CR}0.35)`, boxShadow: reached ? `0 0 6px ${W}0.55)` : "none", transition: "all 0.4s" }} />
       </div>
-      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: inZone ? `${W}0.75)` : `${CR}0.3)` }}>
+      <span style={{ fontSize: "7px", letterSpacing: "0.14em", fontFamily: "monospace", color: reached ? `${W}0.75)` : `${CR}0.3)` }}>
         {yaw >= 0 ? "+" : ""}{yaw.toFixed(1)}°
       </span>
     </div>
@@ -166,9 +153,9 @@ function YawDial({ yaw, targetYaw, inZone }: { yaw: number; targetYaw: number; i
 }
 
 const AMPLITUDE_PRESETS = [
-  { label: "轻", scale: 0.65 },
-  { label: "中", scale: 1.0  },
-  { label: "大", scale: 2.0  },
+  { label: "轻", sublabel: "13°", scale: 0.65 },
+  { label: "中", sublabel: "20°", scale: 1.0  },
+  { label: "深", sublabel: "40°", scale: 2.0  },
 ];
 
 export default function MinimalUI({
@@ -509,25 +496,25 @@ export default function MinimalUI({
 
         {/* Amplitude preset selector */}
         <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
-          {AMPLITUDE_PRESETS.map(({ label, scale }) => {
+          {AMPLITUDE_PRESETS.map(({ label, sublabel, scale }) => {
             const active = Math.abs(amplitudeScale - scale) < 0.01;
             return (
               <div
                 key={label}
                 onClick={() => onAmplitudeChange(scale)}
                 style={{
-                  width: "22px", height: "22px", borderRadius: "50%",
-                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "32px", height: "32px", borderRadius: "8px",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", gap: "1px",
                   cursor: "pointer",
                   background: active ? `${W}0.85)` : "rgba(255,248,240,0.5)",
                   border: `1px solid ${W}${active ? "0.7" : "0.2"})`,
-                  fontSize: "8px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif",
-                  color: active ? "rgba(255,248,240,0.95)" : `${CR}0.45)`,
                   transition: "all 0.25s",
                   userSelect: "none",
                 }}
               >
-                {label}
+                <span style={{ fontSize: "8px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{label}</span>
+                <span style={{ fontSize: "6px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{sublabel}</span>
               </div>
             );
           })}

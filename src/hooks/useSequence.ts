@@ -13,7 +13,7 @@ export const STEPS: StepDef[] = [
 
 const RESONANCE_MS = 1800;
 const PAUSE_MS     = 600;  // brief pause between steps
-const GRACE_MS = 350; // ms before resetting when user drifts out of zone
+const GRACE_MS = 600; // ms before resetting when user drifts out of zone
 
 export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
   const rotRef = useRef(headRotation);
@@ -48,9 +48,8 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0) {
       const rot = rotRef.current;
       const value = rot[step.axis];
       const scaledTarget = step.target * scaleRef.current;
-      const scaledTol    = step.tolerance * scaleRef.current;
-      // In-zone: within 1.5× tolerance of scaled target
-      const inZone = Math.abs(value - scaledTarget) <= scaledTol * 1.5;
+      // In-zone: reached or passed the target line (same sign = same direction)
+      const inZone = scaledTarget > 0 ? value >= scaledTarget : value <= scaledTarget;
 
       const ph = phaseRef.current;
 
