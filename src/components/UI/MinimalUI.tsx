@@ -13,7 +13,7 @@ interface Props {
   onToggleGuidedMode: () => void;
   amplitudeScale: number;
   onAmplitudeChange: (scale: number) => void;
-  showCompletion: boolean;
+  completionPhase: 'idle' | 'ripple' | 'clearing' | 'emerging';
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export default function MinimalUI({
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
   amplitudeScale, onAmplitudeChange,
-  showCompletion,
+  completionPhase,
 }: Props) {
   const orbRotRef = useRef(0);
   const orbRef = useRef<HTMLDivElement>(null);
@@ -225,17 +225,27 @@ export default function MinimalUI({
           50%      { opacity: 0.9; }
         }
         @keyframes ring-pulse {
-          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.8; }
-          100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
+          0%   { transform: scale(1);   opacity: 0.8; }
+          100% { transform: scale(4.5); opacity: 0; }
+        }
+        @keyframes text-echo {
+          0%   { opacity: 0.45; text-shadow: 0 0 0px rgba(180,95,65,0); letter-spacing: 0.25em; }
+          50%  { opacity: 0.88; text-shadow: 0 0 18px rgba(180,95,65,0.35), 0 0 32px rgba(180,95,65,0.15); letter-spacing: 0.35em; }
+          100% { opacity: 0.45; text-shadow: 0 0 0px rgba(180,95,65,0); letter-spacing: 0.25em; }
         }
         @keyframes completion-ring {
-          0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.75; }
+          0%   { transform: scale(1);   opacity: 0.75; }
           60%  { opacity: 0.35; }
-          100% { transform: translate(-50%,-50%) scale(8);   opacity: 0; }
+          100% { transform: scale(8);   opacity: 0; }
         }
       `}</style>
 
-      {!showCompletion && <>
+      {/* ── NORMAL UI — opacity-controlled for smooth transition ── */}
+      <div style={{
+        opacity: completionPhase === 'idle' || completionPhase === 'emerging' ? 1 : 0,
+        transition: completionPhase === 'emerging' ? 'opacity 1.5s ease' : 'opacity 0.3s ease',
+        pointerEvents: completionPhase === 'ripple' || completionPhase === 'clearing' ? 'none' : 'auto',
+      }}>
       {/* ── TOP BAR ─────────────────────────────────────────────── */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
@@ -279,29 +289,6 @@ export default function MinimalUI({
         }} />
       ))}
 
-      {/* ── GUIDE MODE TOGGLE ───────────────────────────────────── */}
-      <div
-        onClick={onToggleGuidedMode}
-        style={{
-          position: "fixed", top: "50%", left: "50%",
-          transform: "translate(-50%, calc(-50% - 96px))",
-          zIndex: 200, pointerEvents: "auto", cursor: "pointer",
-          width: "26px", height: "26px", borderRadius: "50%",
-          background: guidedMode ? `${W}0.85)` : "rgba(255,248,240,0.65)",
-          border: `1px solid ${W}${guidedMode ? "0.8" : "0.25"})`,
-          backdropFilter: "blur(8px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "9px", letterSpacing: "0.05em",
-          color: guidedMode ? "rgba(255,248,240,0.95)" : `${CR}0.5)`,
-          fontFamily: "'DM Sans', sans-serif", fontWeight: 300,
-          transition: "all 0.3s",
-          boxShadow: guidedMode ? `0 0 10px ${W}0.4)` : "none",
-          userSelect: "none",
-        }}
-      >
-        导
-      </div>
-
       {/* ── CENTRAL GUIDE ───────────────────────────────────────── */}
       <div style={{
         position: "fixed", top: "50%", left: "50%",
@@ -310,7 +297,14 @@ export default function MinimalUI({
         display: "flex", flexDirection: "column", alignItems: "center", gap: "18px",
       }}>
         {/* Ring + arrow */}
-        <div style={{ position: "relative", width: "120px", height: "120px" }}>
+        <div
+          onClick={!guidedMode ? onToggleGuidedMode : undefined}
+          style={{
+            position: "relative", width: "120px", height: "120px",
+            cursor: !guidedMode ? "pointer" : "default",
+            pointerEvents: "auto",
+          }}
+        >
 
           {/* SVG: track + hold fill ring (guided only) */}
           <svg width="120" height="120" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
@@ -350,6 +344,32 @@ export default function MinimalUI({
             border: `0.5px solid ${W}${inZone ? 0.25 : 0.08})`,
             transition: "all 0.5s",
           }} />
+
+          {/* Free mode: glassmorphic 导 start button */}
+          {!guidedMode && (
+            <div style={{
+              position: "absolute", top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
+              pointerEvents: "none",
+            }}>
+              <span style={{
+                fontSize: "13px", letterSpacing: "0.28em",
+                fontFamily: "'DM Serif Display', serif",
+                fontStyle: "italic",
+                color: `${CR}0.75)`,
+                animation: "text-echo 3.6s ease-in-out infinite",
+                userSelect: "none",
+              }}>开始</span>
+              <span style={{
+                fontSize: "7px", letterSpacing: "0.3em",
+                color: `${CR}0.35)`,
+                fontFamily: "monospace",
+                animation: "text-echo 3.6s ease-in-out infinite 0.4s",
+                userSelect: "none",
+              }}>START</span>
+            </div>
+          )}
 
           {/* Direction arrow — guided mode only, fades when holding */}
           {guidedMode && !isResonating && (
@@ -478,10 +498,10 @@ export default function MinimalUI({
           })}
         </div>
       </div>
-      </>}
+      </div>
 
-      {/* ── COMPLETION OVERLAY ──────────────────────────────────── */}
-      {showCompletion && [0,1,2,3,4,5,6,7].map((i) => (
+      {/* ── COMPLETION RIPPLES ──────────────────────────────────── */}
+      {completionPhase === 'ripple' && [0,1,2,3,4,5,6,7].map((i) => (
         <div key={i} style={{
           position: "fixed", top: "50%", left: "50%",
           width: "120px", height: "120px",

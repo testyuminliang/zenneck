@@ -79,10 +79,10 @@ export default function ResonanceVortex({ alignmentProgress, isFormed: _isFormed
       groupRef.current.rotation.z = smoothRollRef.current;  // 左右侧倾
     }
 
-    // Convergence target: trigger when alignment > 85%
-    const targetConv = alignmentProgress > 0.85 ? 1.0 : 0.0;
-    // 0.4s convergence time
-    const lerpSpeed = Math.min(1.0, delta / 0.4);
+    // Convergence follows alignmentProgress directly — gradually forms during rotation and hold
+    const targetConv = alignmentProgress;
+    // Forming is slower (1.8s), dissolving is faster (0.8s) for a more organic feel
+    const lerpSpeed = Math.min(1.0, delta / (targetConv > convergenceRef.current ? 1.8 : 0.8));
     convergenceRef.current = lerp(convergenceRef.current, targetConv, lerpSpeed);
     const cv = convergenceRef.current;
 
