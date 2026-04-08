@@ -6,6 +6,7 @@ import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
 import CustomPanel from "./components/UI/CustomPanel";
 import { useSequence, STEPS } from "./hooks/useSequence";
+import { useAudio } from "./hooks/useAudio";
 import type { HeadRotation, CustomConfig } from "./types";
 import "./App.css";
 
@@ -38,6 +39,35 @@ function App() {
   const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
     useSequence(headRotation, amplitudeScale, activeSteps);
 
+  const { startBGM, stopBGM, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
+
+  // BGM：guided mode 开启时淡入，关闭时淡出
+  useEffect(() => {
+    if (guidedMode) startBGM();
+    else stopBGM();
+  }, [guidedMode]);
+
+  // Phase 转换音效
+  const prevPhaseRef = useRef<string>("guide");
+  useEffect(() => {
+    if (!guidedMode) { prevPhaseRef.current = phase; return; }
+    const prev = prevPhaseRef.current;
+    if (phase === "hold" && prev === "guide") {
+      startCrescendo();
+    } else if (phase === "resonance" && prev === "hold") {
+      stopCrescendo();
+      playStepComplete();
+    } else if (phase === "guide" && prev === "hold") {
+      stopCrescendo(); // 用户偏出目标区，渐强音淡出
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, guidedMode]);
+
+  // 渐强音随 holdProgress 实时更新
+  useEffect(() => {
+    if (phase === "hold" && guidedMode) updateCrescendo(holdProgress);
+  }, [holdProgress, phase, guidedMode]);
+
   // In guided mode: curves react to proximity before hold, then hold progress
   // In free mode: curves react to total head deviation
   const alignmentProgress = (() => {
@@ -60,6 +90,9 @@ function App() {
 
   useEffect(() => {
     if (!isCompleted) return;
+    stopCrescendo();
+    stopBGM();
+    playSessionComplete();
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
     const t2 = setTimeout(() => { resetCompleted(); setGuidedMode(false); setCompletionPhase('emerging'); }, 5500);
