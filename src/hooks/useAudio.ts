@@ -51,19 +51,25 @@ async function idbDelete(): Promise<void> {
 // ── Hook ──────────────────────────────────────────────────────────
 type BgmNodes = {
   fadeGain: GainNode;
-  oscs: OscillatorNode[];       // synthesized drone
-  source?: AudioBufferSourceNode; // custom audio
+  source: AudioBufferSourceNode;
+};
+
+type CrescendoNodes = {
+  gain: GainNode;
+  source: AudioBufferSourceNode;
 };
 
 export function useAudio() {
-  const ctxRef        = useRef<AudioContext | null>(null);
-  const bgmRef        = useRef<BgmNodes | null>(null);
-  const bgmStartingRef = useRef(false);
-  const customBufRef  = useRef<AudioBuffer | null>(null);
-  const crescendoRef  = useRef<{
-    osc: OscillatorNode; gain: GainNode;
-    osc2: OscillatorNode; gain2: GainNode;
-  } | null>(null);
+  const ctxRef          = useRef<AudioContext | null>(null);
+  const bgmRef          = useRef<BgmNodes | null>(null);
+  const bgmStartingRef  = useRef(false);
+  const bgmPendingRef   = useRef(false); // startBGM 被调用时 buffer 尚未就绪
+  const customBufRef    = useRef<AudioBuffer | null>(null);
+  const defaultBufRef  = useRef<AudioBuffer | null>(null);
+  const sfxStepBufRef    = useRef<AudioBuffer | null>(null);
+  const sfxSessionBufRef = useRef<AudioBuffer | null>(null);
+  const sfxHoldBufRef    = useRef<AudioBuffer | null>(null);
+  const crescendoRef   = useRef<CrescendoNodes | null>(null);
 
   function getCtx(): AudioContext {
     if (!ctxRef.current) ctxRef.current = new AudioContext();
@@ -71,88 +77,93 @@ export function useAudio() {
     return ctxRef.current;
   }
 
-  // Eagerly load saved custom BGM from IndexedDB on mount
+  // ── 预加载所有音频资源 ────────────────────────────────────────────
   useEffect(() => {
-    idbLoad().then(async (ab) => {
-      if (!ab) return;
+    const loadBgm = async () => {
+      const ab = await idbLoad();
+      if (ab) {
+        try {
+          customBufRef.current = await getCtx().decodeAudioData(ab);
+        } catch { /* corrupted */ }
+      } else {
+        try {
+          const res = await fetch("/audio/default-bgm.mp3");
+          defaultBufRef.current = await getCtx().decodeAudioData(await res.arrayBuffer());
+          // 外部曾调用过 startBGM 但当时 buffer 未就绪，现在补上
+          if (bgmPendingRef.current) {
+            bgmPendingRef.current = false;
+            startBGM();
+          }
+        } catch { /* no BGM */ }
+      }
+    };
+
+    const loadSfx = async () => {
       try {
-        customBufRef.current = await getCtx().decodeAudioData(ab);
-      } catch { /* corrupted – ignore */ }
-    });
+        const ctx = getCtx();
+        const [stepRes, sessionRes, holdRes] = await Promise.all([
+          fetch("/audio/sfx-step.mp3"),
+          fetch("/audio/sfx-session.mp3"),
+          fetch("/audio/sfx-hold-loop.mp3"),
+        ]);
+        const [stepAb, sessionAb, holdAb] = await Promise.all([
+          stepRes.arrayBuffer(), sessionRes.arrayBuffer(), holdRes.arrayBuffer(),
+        ]);
+        [sfxStepBufRef.current, sfxSessionBufRef.current, sfxHoldBufRef.current] = await Promise.all([
+          ctx.decodeAudioData(stepAb),
+          ctx.decodeAudioData(sessionAb),
+          ctx.decodeAudioData(holdAb),
+        ]);
+      } catch { /* no SFX */ }
+    };
+
+    loadBgm();
+    loadSfx();
   }, []);
 
-  function playTone(
-    freq: number, duration: number,
-    volume = 0.22, type: OscillatorType = "sine", delay = 0,
-  ) {
-    const ctx  = getCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + delay + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
-    osc.start(ctx.currentTime + delay);
-    osc.stop(ctx.currentTime + delay + duration + 0.06);
+  function playSfxBuffer(buf: AudioBuffer, volume = 0.8) {
+    const ctx    = getCtx();
+    const gain   = ctx.createGain();
+    gain.gain.value = volume;
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
   }
 
   // ── BGM ──────────────────────────────────────────────────────────
   const startBGM = useCallback(async () => {
     if (bgmRef.current || bgmStartingRef.current) return;
-    bgmStartingRef.current = true;
+    const audioBuf = customBufRef.current ?? defaultBufRef.current;
+    if (!audioBuf) {
+      bgmPendingRef.current = true; // 记住：buffer 就绪后自动启动
+      return;
+    }
 
+    bgmStartingRef.current = true;
     const ctx      = getCtx();
     const fadeGain = ctx.createGain();
     fadeGain.gain.setValueAtTime(0, ctx.currentTime);
     fadeGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 4.0);
     fadeGain.connect(ctx.destination);
 
-    if (customBufRef.current) {
-      // ── User's own music ──────────────────────────────────────
-      const masterGain = ctx.createGain();
-      masterGain.gain.value = 0.70;
-      masterGain.connect(fadeGain);
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.70;
+    masterGain.connect(fadeGain);
 
-      const source = ctx.createBufferSource();
-      source.buffer = customBufRef.current;
-      source.loop   = true;
-      source.connect(masterGain);
-      source.start();
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuf;
+    source.loop   = true;
+    source.connect(masterGain);
+    source.start();
 
-      bgmRef.current = { fadeGain, oscs: [], source };
-    } else {
-      // ── Synthesized ambient drone ─────────────────────────────
-      // A minor: 110 / 220 / 330 Hz pure sines
-      // 110.07 Hz beat partner → 0.07 Hz beat ≈ 14s per pulse (air-like movement)
-      const masterGain = ctx.createGain();
-      masterGain.gain.value = 0.042;
-      masterGain.connect(fadeGain);
-
-      const freqs: [number, number][] = [
-        [110.00, 1.00],
-        [110.07, 0.80],
-        [220.00, 0.50],
-        [330.00, 0.22],
-      ];
-      const oscs: OscillatorNode[] = freqs.map(([freq, vol]) => {
-        const osc = ctx.createOscillator();
-        const g   = ctx.createGain();
-        g.gain.value    = vol;
-        osc.type        = "sine";
-        osc.frequency.value = freq;
-        osc.connect(g); g.connect(masterGain);
-        osc.start();
-        return osc;
-      });
-
-      bgmRef.current = { fadeGain, oscs };
-    }
+    bgmRef.current = { fadeGain, source };
     bgmStartingRef.current = false;
   }, []);
 
   const stopBGM = useCallback(() => {
+    bgmPendingRef.current = false; // 取消待启动
     const nodes = bgmRef.current;
     if (!nodes) return;
     const ctx = getCtx();
@@ -160,19 +171,16 @@ export function useAudio() {
     nodes.fadeGain.gain.setValueAtTime(nodes.fadeGain.gain.value, now);
     nodes.fadeGain.gain.linearRampToValueAtTime(0, now + 2.5);
     setTimeout(() => {
-      nodes.oscs.forEach(o => { try { o.stop(); } catch { /* ok */ } });
-      if (nodes.source) { try { nodes.source.stop(); } catch { /* ok */ } }
+      try { nodes.source.stop(); } catch { /* ok */ }
       bgmRef.current = null;
     }, 2800);
   }, []);
 
   // ── User music upload ─────────────────────────────────────────────
-  // Returns the filename for the caller to store in config.
   const loadCustomBgm = useCallback(async (file: File): Promise<string> => {
     const ab = await file.arrayBuffer();
-    await idbSave(ab.slice(0));                         // save copy before decode detaches buffer
+    await idbSave(ab.slice(0));
     customBufRef.current = await getCtx().decodeAudioData(ab);
-    // Swap BGM live if currently playing
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
     return file.name;
   }, [stopBGM, startBGM]);
@@ -183,58 +191,44 @@ export function useAudio() {
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
   }, [stopBGM, startBGM]);
 
-  // ── Crescendo (hold phase swell) ──────────────────────────────────
+  // ── Hold phase（风铃循环音随 progress 淡入）────────────────────────
   const startCrescendo = useCallback(() => {
-    if (crescendoRef.current) return;
+    if (crescendoRef.current || !sfxHoldBufRef.current) return;
     const ctx  = getCtx();
-    const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine"; osc.frequency.value = 440;
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    osc.connect(gain); gain.connect(ctx.destination); osc.start();
+    gain.connect(ctx.destination);
 
-    const osc2  = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = "sine"; osc2.frequency.value = 880;
-    gain2.gain.setValueAtTime(0, ctx.currentTime);
-    osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start();
-
-    crescendoRef.current = { osc, gain, osc2, gain2 };
+    const source = ctx.createBufferSource();
+    source.buffer = sfxHoldBufRef.current;
+    source.loop   = true;
+    source.connect(gain);
+    source.start();
+    crescendoRef.current = { gain, source };
   }, []);
 
   const updateCrescendo = useCallback((progress: number) => {
     const node = crescendoRef.current;
     if (!node) return;
-    const ctx = getCtx();
-    node.gain.gain.setTargetAtTime(progress * 0.12, ctx.currentTime, 0.10);
-    node.gain2.gain.setTargetAtTime(Math.max(0, (progress - 0.5) * 2) * 0.055, ctx.currentTime, 0.14);
+    node.gain.gain.setTargetAtTime(progress * 0.75, getCtx().currentTime, 0.15);
   }, []);
 
   const stopCrescendo = useCallback(() => {
     const node = crescendoRef.current;
     if (!node) return;
     crescendoRef.current = null;
-    const ctx = getCtx();
-    node.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.12);
-    node.gain2.gain.setTargetAtTime(0, ctx.currentTime, 0.12);
-    node.osc.stop(ctx.currentTime + 0.7);
-    node.osc2.stop(ctx.currentTime + 0.7);
+    node.gain.gain.setTargetAtTime(0, getCtx().currentTime, 0.12);
+    setTimeout(() => { try { node.source.stop(); } catch { /* ok */ } }, 700);
   }, []);
 
   // ── Step complete chime ───────────────────────────────────────────
   const playStepComplete = useCallback(() => {
-    playTone(880,  0.55, 0.20, "sine");
-    playTone(1320, 0.40, 0.07, "sine", 0.06);
-    playTone(1760, 0.28, 0.03, "sine", 0.13);
+    if (sfxStepBufRef.current) playSfxBuffer(sfxStepBufRef.current, 0.8);
   }, []);
 
-  // ── Session complete melody ───────────────────────────────────────
+  // ── Session complete ──────────────────────────────────────────────
   const playSessionComplete = useCallback(() => {
-    playTone(523,  0.55, 0.20, "sine", 0);
-    playTone(659,  0.55, 0.20, "sine", 0.36);
-    playTone(784,  0.65, 0.22, "sine", 0.72);
-    playTone(1047, 1.40, 0.18, "sine", 1.08);
-    playTone(1319, 1.20, 0.10, "sine", 1.18);
+    if (sfxSessionBufRef.current) playSfxBuffer(sfxSessionBufRef.current, 0.85);
   }, []);
 
   return {

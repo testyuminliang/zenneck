@@ -54,11 +54,11 @@ function App() {
 
   const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
 
-  // BGM：guided mode 且 bgmEnabled 时淡入，否则淡出
+  // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
   useEffect(() => {
-    if (guidedMode && customConfig.bgmEnabled) startBGM();
+    if (customConfig.bgmEnabled) startBGM();
     else stopBGM();
-  }, [guidedMode, customConfig.bgmEnabled]);
+  }, [customConfig.bgmEnabled]);
 
   // Phase 转换音效
   const prevPhaseRef = useRef<string>("guide");
@@ -108,7 +108,13 @@ function App() {
     if (customConfig.sfxEnabled) playSessionComplete();
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
-    const t2 = setTimeout(() => { resetCompleted(); setGuidedMode(false); setCompletionPhase('emerging'); }, 5500);
+    const t2 = setTimeout(() => {
+      resetCompleted();
+      setGuidedMode(false);
+      setCompletionPhase('emerging');
+      // BGM 恢复：回到自由模式后继续播放
+      if (customConfig.bgmEnabled) startBGM();
+    }, 5500);
     const t3 = setTimeout(() => setCompletionPhase('idle'), 11000);
     return () => [t1, t2, t3].forEach(clearTimeout);
   }, [isCompleted]);
