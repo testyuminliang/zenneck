@@ -55,8 +55,8 @@ type BgmNodes = {
 };
 
 type CrescendoNodes = {
-  gain: GainNode;
   source: AudioBufferSourceNode;
+  masterGain: GainNode;
 };
 
 export function useAudio() {
@@ -191,34 +191,38 @@ export function useAudio() {
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
   }, [stopBGM, startBGM]);
 
-  // ── Hold phase（风铃循环音随 progress 淡入）────────────────────────
+  // ── Hold phase：过滤白噪声，像一波海浪/风缓缓涌上 ─────────────────
+  // ── Hold phase：播放 sfx-hold-loop.mp3，音量随 progress 渐强 ──────
   const startCrescendo = useCallback(() => {
     if (crescendoRef.current || !sfxHoldBufRef.current) return;
-    const ctx  = getCtx();
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.connect(ctx.destination);
+    const ctx = getCtx();
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.connect(ctx.destination);
 
     const source = ctx.createBufferSource();
     source.buffer = sfxHoldBufRef.current;
-    source.loop   = true;
-    source.connect(gain);
+    source.loop = true;
+    source.connect(masterGain);
     source.start();
-    crescendoRef.current = { gain, source };
+
+    crescendoRef.current = { source, masterGain };
   }, []);
 
   const updateCrescendo = useCallback((progress: number) => {
     const node = crescendoRef.current;
     if (!node) return;
-    node.gain.gain.setTargetAtTime(progress * 0.75, getCtx().currentTime, 0.15);
+    node.masterGain.gain.setTargetAtTime(progress * 0.75, getCtx().currentTime, 0.15);
   }, []);
 
   const stopCrescendo = useCallback(() => {
     const node = crescendoRef.current;
     if (!node) return;
     crescendoRef.current = null;
-    node.gain.gain.setTargetAtTime(0, getCtx().currentTime, 0.12);
-    setTimeout(() => { try { node.source.stop(); } catch { /* ok */ } }, 700);
+    const ctx = getCtx();
+    node.masterGain.gain.setTargetAtTime(0, ctx.currentTime, 0.10);
+    setTimeout(() => { try { node.source.stop(); } catch { /* ok */ } }, 600);
   }, []);
 
   // ── Step complete chime ───────────────────────────────────────────
