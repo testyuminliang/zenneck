@@ -3,16 +3,16 @@ import type { StepDef, StepPhase, HeadRotation } from "../types";
 
 // Base targets at 1× scale. Amplitude presets: 轻 0.65× → ~13°, 中 1.0× → 20°, 大 2.0× → 40°
 export const STEPS: StepDef[] = [
-  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 4000, label: "向右侧倾", cue: "tilt right",   arrowDir: "right"       },
-  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 4000, label: "向左侧倾", cue: "tilt left",    arrowDir: "left"        },
-  { id: 2, axis: "pitch", target: -33, tolerance: 6, holdMs: 4000, label: "抬头仰望", cue: "look up",      arrowDir: "up"          },
-  { id: 3, axis: "pitch", target:  33, tolerance: 6, holdMs: 4000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
-  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 4000, label: "向右转头", cue: "turn right",   arrowDir: "right"       },
-  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 4000, label: "向左转头", cue: "turn left",    arrowDir: "left"        },
-  { id: 6, axis: "yaw",   target:  25, tolerance: 5, holdMs: 4000, label: "右上方转头", cue: "look up-right",   arrowDir: "up-right",   axis2: "pitch", target2: -20 },
-  { id: 7, axis: "yaw",   target: -25, tolerance: 5, holdMs: 4000, label: "左上方转头", cue: "look up-left",    arrowDir: "up-left",    axis2: "pitch", target2: -20 },
-  { id: 8, axis: "yaw",   target:  25, tolerance: 5, holdMs: 4000, label: "右下方转头", cue: "look down-right", arrowDir: "down-right", axis2: "pitch", target2:  20 },
-  { id: 9, axis: "yaw",   target: -25, tolerance: 5, holdMs: 4000, label: "左下方转头", cue: "look down-left",  arrowDir: "down-left",  axis2: "pitch", target2:  20 },
+  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 6000, label: "向右侧倾", cue: "tilt right",   arrowDir: "right"       },
+  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 6000, label: "向左侧倾", cue: "tilt left",    arrowDir: "left"        },
+  { id: 2, axis: "pitch", target: -33, tolerance: 6, holdMs: 6000, label: "抬头仰望", cue: "look up",      arrowDir: "up"          },
+  { id: 3, axis: "pitch", target:  33, tolerance: 6, holdMs: 6000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
+  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 6000, label: "向右转头", cue: "turn right",   arrowDir: "right"       },
+  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 6000, label: "向左转头", cue: "turn left",    arrowDir: "left"        },
+  { id: 6, axis: "yaw",   target:  25, tolerance: 5, holdMs: 6000, label: "右上方转头", cue: "look up-right",   arrowDir: "up-right",   axis2: "pitch", target2: -20 },
+  { id: 7, axis: "yaw",   target: -25, tolerance: 5, holdMs: 6000, label: "左上方转头", cue: "look up-left",    arrowDir: "up-left",    axis2: "pitch", target2: -20 },
+  { id: 8, axis: "yaw",   target:  25, tolerance: 5, holdMs: 6000, label: "右下方转头", cue: "look down-right", arrowDir: "down-right", axis2: "pitch", target2:  20 },
+  { id: 9, axis: "yaw",   target: -25, tolerance: 5, holdMs: 6000, label: "左下方转头", cue: "look down-left",  arrowDir: "down-left",  axis2: "pitch", target2:  20 },
 ];
 
 const RESONANCE_MS = 1800;

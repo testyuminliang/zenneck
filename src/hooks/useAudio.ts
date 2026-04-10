@@ -203,7 +203,6 @@ export function useAudio() {
 
     const source = ctx.createBufferSource();
     source.buffer = sfxHoldBufRef.current;
-    source.loop = true;
     source.connect(masterGain);
     source.start();
 
