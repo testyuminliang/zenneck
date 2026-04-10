@@ -104,7 +104,6 @@ function App() {
   useEffect(() => {
     if (!isCompleted) return;
     stopCrescendo();
-    stopBGM();
     if (customConfig.sfxEnabled) playSessionComplete();
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
@@ -112,8 +111,6 @@ function App() {
       resetCompleted();
       setGuidedMode(false);
       setCompletionPhase('emerging');
-      // BGM 恢复：回到自由模式后继续播放
-      if (customConfig.bgmEnabled) startBGM();
     }, 5500);
     const t3 = setTimeout(() => setCompletionPhase('idle'), 11000);
     return () => [t1, t2, t3].forEach(clearTimeout);
