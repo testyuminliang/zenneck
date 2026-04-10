@@ -385,7 +385,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
           }}>
             练习步骤
           </span>
-          {orderedSteps.map((step, listIdx) => {
+          {orderedSteps.map((step) => {
             const enabled = enabledIds.has(step.id);
             const orderIdx = config.stepOrder.indexOf(step.id);
             return (
