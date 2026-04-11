@@ -1,4 +1,6 @@
 import type { StepDef, StepPhase, HeadRotation, CustomConfig } from "../../types";
+import type { Lang } from "../../lang";
+import { t, presetLabel, stepLabel } from "../../lang";
 
 interface Props {
   activeStep: StepDef;
@@ -15,6 +17,8 @@ interface Props {
   customConfig: CustomConfig;
   onCustomOpen: () => void;
   completionPhase: 'idle' | 'ripple' | 'clearing' | 'emerging';
+  lang: Lang;
+  onToggleLang: () => void;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -164,7 +168,7 @@ export default function MinimalUI({
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
   activePresetIdx, onPresetChange, customConfig, onCustomOpen,
-  completionPhase,
+  completionPhase, lang, onToggleLang,
 }: Props) {
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
   const isResonating = phase === "resonance" || phase === "pause";
@@ -335,14 +339,16 @@ export default function MinimalUI({
                 color: `${CR}0.75)`,
                 animation: "text-echo 3.6s ease-in-out infinite",
                 userSelect: "none",
-              }}>开始</span>
-              <span style={{
-                fontSize: "7px", letterSpacing: "0.3em",
-                color: `${CR}0.35)`,
-                fontFamily: "monospace",
-                animation: "text-echo 3.6s ease-in-out infinite 0.4s",
-                userSelect: "none",
-              }}>START</span>
+              }}>{t('start', lang)}</span>
+              {lang === 'zh' && (
+                <span style={{
+                  fontSize: "7px", letterSpacing: "0.3em",
+                  color: `${CR}0.35)`,
+                  fontFamily: "monospace",
+                  animation: "text-echo 3.6s ease-in-out infinite 0.4s",
+                  userSelect: "none",
+                }}>START</span>
+              )}
             </div>
           )}
 
@@ -401,7 +407,7 @@ export default function MinimalUI({
               fontFamily: "'DM Serif Display', serif", fontStyle: "italic",
               animation: "hint-cycle 4s ease-in-out infinite",
             }}>
-              轻轻转动你的头部
+              {t('exploreHead', lang)}
             </span>
             <span style={{
               fontSize: "9px", letterSpacing: "0.22em",
@@ -417,32 +423,47 @@ export default function MinimalUI({
             color: `${W}0.7)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
             animation: "hint-cycle 4s ease-in-out infinite 1.8s",
           }}>
-            点击圆圈开始引导练习
+            {t('tapToStart', lang)}
           </span>
         </div>
       )}
 
-      {/* ── CAMERA PERMISSION NOTICE (free mode only) ───────────── */}
+      {/* ── CAMERA PERMISSION NOTICE + MUSIC TIP (free mode only) ── */}
       {!guidedMode && (
         <div style={{
           position: "fixed", top: "52px", left: "50%",
           transform: "translateX(-50%)",
           zIndex: 100, pointerEvents: "none",
-          display: "flex", alignItems: "center", gap: "6px",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
         }}>
-          <div style={{
-            width: "5px", height: "5px", borderRadius: "50%",
-            background: `${W}0.55)`,
-            animation: "breathe 3s ease-in-out infinite",
-            flexShrink: 0,
-          }} />
-          <span style={{
-            fontSize: "9px", letterSpacing: "0.14em",
-            color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
-            lineHeight: 1.6,
-          }}>
-            请确保摄像头权限已开启
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div style={{
+              width: "5px", height: "5px", borderRadius: "50%",
+              background: `${W}0.55)`,
+              animation: "breathe 3s ease-in-out infinite",
+              flexShrink: 0,
+            }} />
+            <span style={{
+              fontSize: "9px", letterSpacing: "0.14em",
+              color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+            }}>
+              {t('cameraHint', lang)}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <svg width="9" height="9" viewBox="0 0 11 11" style={{ flexShrink: 0, opacity: 0.45 }}>
+              <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${W}1)`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="3.5" cy="8.8" r="1.1" fill={`${W}1)`} />
+              <circle cx="8.5" cy="7.3" r="1.1" fill={`${W}1)`} />
+            </svg>
+            <span style={{
+              fontSize: "9px", letterSpacing: "0.14em",
+              color: `${CR}0.4)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+              animation: "breathe 4s ease-in-out infinite 1s",
+            }}>
+              {t('musicTip', lang)}
+            </span>
+          </div>
         </div>
       )}
 
@@ -464,7 +485,7 @@ export default function MinimalUI({
             animation: phase === "guide" ? "breathe 3s ease-in-out infinite" : "none",
             transition: "color 0.5s",
           }}>
-            {phase === "hold" ? "保持" : activeStep.label}
+            {phase === "hold" ? t('hold', lang) : stepLabel(activeStep, lang)}
           </span>
           <span style={{
             fontSize: "8px", letterSpacing: "0.28em",
@@ -531,18 +552,18 @@ export default function MinimalUI({
                 userSelect: "none",
               }}
             >
-              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{preset.label}</span>
+              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{presetLabel(preset.label, lang)}</span>
               <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{preset.angle}°</span>
             </div>
           );
         })}
-        {/* 定制 button */}
+        {/* Custom button */}
         <div
           onClick={onCustomOpen}
+          title={t('custom', lang)}
           style={{
             width: "40px", height: "40px", borderRadius: "8px",
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", gap: "1px",
+            display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
             background: "rgba(255,248,240,0.5)",
             border: `1px solid ${W}0.2)`,
@@ -550,9 +571,39 @@ export default function MinimalUI({
             userSelect: "none",
           }}
         >
-          <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: `${CR}0.55)` }}>定制</span>
-          <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: `${CR}0.3)` }}>CUSTOM</span>
+          <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+            <line x1="1" y1="2.5"  x2="15" y2="2.5"  stroke={`${CR}0.5)`} strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="5"  cy="2.5"  r="1.8" fill="rgba(255,248,240,0.9)" stroke={`${CR}0.5)`} strokeWidth="1.2"/>
+            <line x1="1" y1="7"    x2="15" y2="7"    stroke={`${CR}0.5)`} strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="10" cy="7"    r="1.8" fill="rgba(255,248,240,0.9)" stroke={`${CR}0.5)`} strokeWidth="1.2"/>
+            <line x1="1" y1="11.5" x2="15" y2="11.5" stroke={`${CR}0.5)`} strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="6"  cy="11.5" r="1.8" fill="rgba(255,248,240,0.9)" stroke={`${CR}0.5)`} strokeWidth="1.2"/>
+          </svg>
         </div>
+      </div>
+
+      {/* ── LANG TOGGLE DOT ──────────────────────────────────── */}
+      <div
+        onClick={onToggleLang}
+        title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
+        style={{
+          position: "fixed", bottom: "1.8rem", left: "1.8rem",
+          zIndex: 100, cursor: "pointer",
+          width: "36px", height: "36px", borderRadius: "50%",
+          background: "rgba(255,248,240,0.55)",
+          backdropFilter: "blur(10px)",
+          border: `0.5px solid ${W}0.2)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          userSelect: "none",
+          transition: "all 0.25s",
+        }}
+      >
+        <span style={{
+          fontSize: "9px", letterSpacing: "0.06em",
+          color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+        }}>
+          {lang === 'zh' ? 'EN' : '中'}
+        </span>
       </div>
       </div>
 

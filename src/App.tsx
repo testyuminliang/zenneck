@@ -8,6 +8,8 @@ import CustomPanel from "./components/UI/CustomPanel";
 import { useSequence, STEPS } from "./hooks/useSequence";
 import { useAudio } from "./hooks/useAudio";
 import type { HeadRotation, CustomConfig } from "./types";
+import type { Lang } from "./lang";
+import { t } from "./lang";
 import "./App.css";
 
 const BASE_ANGLE = 20;
@@ -35,6 +37,7 @@ function App() {
     return DEFAULT_CONFIG;
   });
   const [showCustomPanel, setShowCustomPanel] = useState(false);
+  const [lang, setLang] = useState<Lang>('zh');
 
   // Persist config changes to localStorage
   useEffect(() => {
@@ -162,6 +165,8 @@ function App() {
         customConfig={customConfig}
         onCustomOpen={() => setShowCustomPanel(v => !v)}
         completionPhase={completionPhase}
+        lang={lang}
+        onToggleLang={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
       />
 
       {showCustomPanel && (
@@ -170,6 +175,7 @@ function App() {
           allSteps={STEPS}
           onChange={setCustomConfig}
           onClose={() => setShowCustomPanel(false)}
+          lang={lang}
           onUploadBgm={async (file) => {
             const name = await loadCustomBgm(file);
             setCustomConfig(c => ({ ...c, customBgmName: name }));
@@ -212,7 +218,7 @@ function App() {
           color: 'rgba(154,88,64,0.82)',
           fontFamily: "'DM Serif Display', serif",
           fontStyle: 'italic',
-        }}>练习完成</span>
+        }}>{t('sessionComplete', lang)}</span>
         <span style={{
           fontSize: '8px', letterSpacing: '0.4em',
           color: 'rgba(154,88,64,0.4)',

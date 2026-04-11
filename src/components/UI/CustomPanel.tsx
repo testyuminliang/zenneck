@@ -1,4 +1,6 @@
 import type { CustomConfig, StepDef } from "../../types";
+import type { Lang } from "../../lang";
+import { t, presetLabel, stepLabel } from "../../lang";
 
 const W  = "rgba(180,95,65,";
 const CR = "rgba(100,60,40,";
@@ -13,17 +15,19 @@ interface Props {
   onClose: () => void;
   onUploadBgm: (file: File) => Promise<void>;
   onClearBgm: () => Promise<void>;
+  lang: Lang;
 }
 
 function StepRow({
   step, enabled, canUp, canDown,
-  onToggle, onMoveUp, onMoveDown,
+  onToggle, onMoveUp, onMoveDown, lang,
 }: {
   step: StepDef; enabled: boolean;
   canUp: boolean; canDown: boolean;
   onToggle: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  lang: Lang;
 }) {
   const axisColor = step.axis2
     ? `${W}0.55)` : step.axis === "roll"
@@ -62,7 +66,7 @@ function StepRow({
         flex: 1, fontSize: "11px", letterSpacing: "0.06em",
         color: `${CR}0.72)`, fontFamily: "'DM Sans',sans-serif",
       }}>
-        {step.label}
+        {stepLabel(step, lang)}
       </span>
 
       {/* axis badge */}
@@ -104,7 +108,7 @@ function StepRow({
   );
 }
 
-export default function CustomPanel({ config, allSteps, onChange, onClose, onUploadBgm, onClearBgm }: Props) {
+export default function CustomPanel({ config, allSteps, onChange, onClose, onUploadBgm, onClearBgm, lang }: Props) {
   function setPresetAngle(idx: number, raw: string) {
     const v = parseInt(raw);
     if (isNaN(v)) return;
@@ -199,7 +203,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
           {/* BGM / SFX toggles */}
           <div style={{ display: "flex", gap: "8px" }}>
             {(["bgmEnabled", "sfxEnabled"] as const).map((key) => {
-              const label = key === "bgmEnabled" ? "背景音乐" : "音效";
+              const label = key === "bgmEnabled" ? t('bgm', lang) : t('sfx', lang);
               const on = config[key];
               return (
                 <div
@@ -263,7 +267,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                 color: `${CR}${config.customBgmName ? "0.65" : "0.38"})`,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
-                {config.customBgmName ?? "上传音乐"}
+                {config.customBgmName ?? t('uploadMusic', lang)}
               </span>
             </label>
 
@@ -296,7 +300,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
             color: `${CR}0.35)`, fontFamily: "monospace",
             display: "block", marginBottom: "10px",
           }}>
-            幅度预设
+            {t('amplitude', lang)}
           </span>
           {config.presets.map((preset, idx) => (
             <div key={idx} style={{
@@ -307,7 +311,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                 width: "16px", fontSize: "11px", letterSpacing: "0.04em",
                 color: `${CR}0.8)`, fontFamily: "'DM Sans',sans-serif",
                 textAlign: "center", flexShrink: 0,
-              }}>{preset.label}</span>
+              }}>{presetLabel(preset.label, lang)}</span>
 
               {/* − button */}
               <div onClick={() => nudgeAngle(idx, -1)} style={nudgeBtn}>
@@ -383,7 +387,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
             color: `${CR}0.35)`, fontFamily: "monospace",
             display: "block", marginBottom: "6px",
           }}>
-            练习步骤
+            {t('steps', lang)}
           </span>
           {orderedSteps.map((step) => {
             const enabled = enabledIds.has(step.id);
@@ -398,6 +402,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                 onToggle={() => toggleStep(step.id)}
                 onMoveUp={() => moveStep(step.id, "up")}
                 onMoveDown={() => moveStep(step.id, "down")}
+                lang={lang}
               />
             );
           })}
