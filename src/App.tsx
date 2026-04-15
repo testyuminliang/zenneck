@@ -4,20 +4,85 @@ import { Preload } from "@react-three/drei";
 import ResonanceVortex from "./components/ResonanceVortex";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
-import { useSequence } from "./hooks/useSequence";
-import type { HeadRotation } from "./types";
+import CustomPanel from "./components/UI/CustomPanel";
+import { useSequence, STEPS } from "./hooks/useSequence";
+import { useAudio } from "./hooks/useAudio";
+import type { HeadRotation, CustomConfig } from "./types";
+import type { Lang } from "./lang";
+import { t } from "./lang";
 import "./App.css";
+
+const BASE_ANGLE = 20;
+
+const DEFAULT_CONFIG: CustomConfig = {
+  presets: [
+    { label: "轻", angle: 13 },
+    { label: "中", angle: 20 },
+    { label: "深", angle: 40 },
+  ],
+  stepOrder: STEPS.map(s => s.id),
+  bgmEnabled: true,
+  sfxEnabled: true,
+};
 
 function App() {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({ yaw: 0, pitch: 0, roll: 0 });
   const [guidedMode, setGuidedMode] = useState(false);
-  const [amplitudeScale, setAmplitudeScale] = useState(1.0);
+  const [activePresetIdx, setActivePresetIdx] = useState(1);
+  const [customConfig, setCustomConfig] = useState<CustomConfig>(() => {
+    try {
+      const saved = localStorage.getItem("zenneck-config");
+      if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+    } catch { /* ignore */ }
+    return DEFAULT_CONFIG;
+  });
+  const [showCustomPanel, setShowCustomPanel] = useState(false);
+  const [lang, setLang] = useState<Lang>('zh');
+
+  // Persist config changes to localStorage
+  useEffect(() => {
+    localStorage.setItem("zenneck-config", JSON.stringify(customConfig));
+  }, [customConfig]);
+
+  const amplitudeScale = customConfig.presets[activePresetIdx].angle / BASE_ANGLE;
+  const activeSteps = customConfig.stepOrder
+    .map(id => STEPS.find(s => s.id === id)!)
+    .filter(Boolean);
   type CompletionPhase = 'idle' | 'ripple' | 'clearing' | 'emerging';
   const [completionPhase, setCompletionPhase] = useState<CompletionPhase>('idle');
   const faceTrackerRef = useRef<any>(null);
 
   const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
-    useSequence(headRotation, amplitudeScale);
+    useSequence(headRotation, amplitudeScale, activeSteps);
+
+  const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
+
+  // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
+  useEffect(() => {
+    if (customConfig.bgmEnabled) startBGM();
+    else stopBGM();
+  }, [customConfig.bgmEnabled]);
+
+  // Phase 转换音效
+  const prevPhaseRef = useRef<string>("guide");
+  useEffect(() => {
+    if (!guidedMode) { prevPhaseRef.current = phase; return; }
+    const prev = prevPhaseRef.current;
+    if (phase === "hold" && prev === "guide") {
+      if (customConfig.sfxEnabled) startCrescendo();
+    } else if (phase === "resonance" && prev === "hold") {
+      stopCrescendo();
+      if (customConfig.sfxEnabled) playStepComplete();
+    } else if (phase === "guide" && prev === "hold") {
+      stopCrescendo();
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, guidedMode]);
+
+  // 渐强音随 holdProgress 实时更新
+  useEffect(() => {
+    if (phase === "hold" && guidedMode && customConfig.sfxEnabled) updateCrescendo(holdProgress);
+  }, [holdProgress, phase, guidedMode]);
 
   // In guided mode: curves react to proximity before hold, then hold progress
   // In free mode: curves react to total head deviation
@@ -41,9 +106,15 @@ function App() {
 
   useEffect(() => {
     if (!isCompleted) return;
+    stopCrescendo();
+    if (customConfig.sfxEnabled) playSessionComplete();
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
-    const t2 = setTimeout(() => { resetCompleted(); setGuidedMode(false); setCompletionPhase('emerging'); }, 5500);
+    const t2 = setTimeout(() => {
+      resetCompleted();
+      setGuidedMode(false);
+      setCompletionPhase('emerging');
+    }, 5500);
     const t3 = setTimeout(() => setCompletionPhase('idle'), 11000);
     return () => [t1, t2, t3].forEach(clearTimeout);
   }, [isCompleted]);
@@ -89,10 +160,32 @@ function App() {
         headRotation={headRotation}
         guidedMode={guidedMode}
         onToggleGuidedMode={() => setGuidedMode((v) => !v)}
-        amplitudeScale={amplitudeScale}
-        onAmplitudeChange={setAmplitudeScale}
+        activePresetIdx={activePresetIdx}
+        onPresetChange={setActivePresetIdx}
+        customConfig={customConfig}
+        onCustomOpen={() => setShowCustomPanel(v => !v)}
         completionPhase={completionPhase}
+        lang={lang}
+        onToggleLang={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
       />
+
+      {showCustomPanel && (
+        <CustomPanel
+          config={customConfig}
+          allSteps={STEPS}
+          onChange={setCustomConfig}
+          onClose={() => setShowCustomPanel(false)}
+          lang={lang}
+          onUploadBgm={async (file) => {
+            const name = await loadCustomBgm(file);
+            setCustomConfig(c => ({ ...c, customBgmName: name }));
+          }}
+          onClearBgm={async () => {
+            await clearCustomBgm();
+            setCustomConfig(c => ({ ...c, customBgmName: undefined }));
+          }}
+        />
+      )}
 
       {/* ── CLEARING OVERLAY ── 渐入后缓缓消退，整个过程不断档 */}
       <div style={{
@@ -125,7 +218,7 @@ function App() {
           color: 'rgba(154,88,64,0.82)',
           fontFamily: "'DM Serif Display', serif",
           fontStyle: 'italic',
-        }}>练习完成</span>
+        }}>{t('sessionComplete', lang)}</span>
         <span style={{
           fontSize: '8px', letterSpacing: '0.4em',
           color: 'rgba(154,88,64,0.4)',

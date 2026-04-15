@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
-import type { StepDef, StepPhase, HeadRotation } from "../../types";
+import type { StepDef, StepPhase, HeadRotation, CustomConfig } from "../../types";
+import type { Lang } from "../../lang";
+import { t, presetLabel, stepLabel } from "../../lang";
 
 interface Props {
   activeStep: StepDef;
@@ -11,9 +12,13 @@ interface Props {
   headRotation: HeadRotation;
   guidedMode: boolean;
   onToggleGuidedMode: () => void;
-  amplitudeScale: number;
-  onAmplitudeChange: (scale: number) => void;
+  activePresetIdx: number;
+  onPresetChange: (idx: number) => void;
+  customConfig: CustomConfig;
+  onCustomOpen: () => void;
   completionPhase: 'idle' | 'ripple' | 'clearing' | 'emerging';
+  lang: Lang;
+  onToggleLang: () => void;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -25,9 +30,14 @@ const R = 52;
 const CIRC = 2 * Math.PI * R;
 
 // ── Direction arrow (SVG, inside guide circle) ────────────────────────
+const ARROW_ROT: Record<StepDef["arrowDir"], number> = {
+  up: 0, "up-right": 45, right: 90, "down-right": 135,
+  down: 180, "down-left": 225, left: 270, "up-left": 315,
+};
+
 function Arrow({ dir, faded }: { dir: StepDef["arrowDir"]; faded: boolean }) {
   const op = faded ? 0.25 : 0.85;
-  const rot = { right: 90, left: -90, up: 0, down: 180 }[dir];
+  const rot = ARROW_ROT[dir];
   return (
     <svg
       width="32" height="32"
@@ -93,7 +103,7 @@ function HorizonDial({ roll, targetRoll }: { roll: number; targetRoll: number; i
 }
 
 // ── Pitch guide (horizontal bar translates up/down) ───────────────────
-function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number; inZone: boolean }) {
+function PitchDial({ pitch, targetPitch, offsetX = 0 }: { pitch: number; targetPitch: number; inZone: boolean; offsetX?: number }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
   const toY = (v: number) => clamp(v, 45) / 45 * 15;
   const liveY  = toY(pitch);
@@ -102,7 +112,7 @@ function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number;
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
-      transform: "translateX(-50%)",
+      transform: `translateX(calc(-50% + ${offsetX}px))`,
       zIndex: 100, pointerEvents: "none",
       display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
     }}>
@@ -123,7 +133,7 @@ function PitchDial({ pitch, targetPitch }: { pitch: number; targetPitch: number;
 }
 
 // ── Yaw guide (vertical bar translates left/right) ────────────────────
-function YawDial({ yaw, targetYaw }: { yaw: number; targetYaw: number; inZone: boolean }) {
+function YawDial({ yaw, targetYaw, offsetX = 0 }: { yaw: number; targetYaw: number; inZone: boolean; offsetX?: number }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
   const toX = (v: number) => clamp(v, 20) / 20 * 15;
   const liveX  = toX(yaw);
@@ -132,7 +142,7 @@ function YawDial({ yaw, targetYaw }: { yaw: number; targetYaw: number; inZone: b
   return (
     <div style={{
       position: "fixed", top: "52px", left: "50%",
-      transform: "translateX(-50%)",
+      transform: `translateX(calc(-50% + ${offsetX}px))`,
       zIndex: 100, pointerEvents: "none",
       display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
     }}>
@@ -152,52 +162,16 @@ function YawDial({ yaw, targetYaw }: { yaw: number; targetYaw: number; inZone: b
   );
 }
 
-const AMPLITUDE_PRESETS = [
-  { label: "轻", sublabel: "13°", scale: 0.65 },
-  { label: "中", sublabel: "20°", scale: 1.0  },
-  { label: "深", sublabel: "40°", scale: 2.0  },
-];
 
 export default function MinimalUI({
   activeStep, phase, holdProgress, resonanceProgress,
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
-  amplitudeScale, onAmplitudeChange,
-  completionPhase,
+  activePresetIdx, onPresetChange, customConfig, onCustomOpen,
+  completionPhase, lang, onToggleLang,
 }: Props) {
-  const orbRotRef = useRef(0);
-  const orbRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<number>(0);
-
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
   const isResonating = phase === "resonance" || phase === "pause";
-
-  // Orb rAF loop
-  useEffect(() => {
-    const tick = () => {
-      orbRotRef.current += 0.4;
-      if (orbRef.current) {
-        const hue1 = isResonating ? 35 : 18 + holdProgress * 12;
-        const hue2 = isResonating ? 28 : 15;
-        const sat  = 55 + holdProgress * 25;
-        const glow = 0.55 + holdProgress * 0.35;
-        orbRef.current.style.background = `conic-gradient(
-          from ${orbRotRef.current}deg,
-          hsl(${hue1},${sat}%,52%),
-          hsl(${hue2},${sat - 10}%,38%),
-          hsl(${hue1 + 15},${sat}%,48%),
-          hsl(${hue1},${sat}%,52%)
-        )`;
-        orbRef.current.style.boxShadow = `
-          0 0 ${12 + holdProgress * 24}px ${W}${glow}),
-          inset 0 0 ${8 + holdProgress * 16}px ${W}0.3)
-        `;
-      }
-      animRef.current = requestAnimationFrame(tick);
-    };
-    animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [holdProgress, isResonating]);
 
   // How many rings to show during resonance
   const ringScale = 1 + resonanceProgress * 3.5;
@@ -233,6 +207,11 @@ export default function MinimalUI({
           60%  { opacity: 0.35; }
           100% { transform: scale(8);   opacity: 0; }
         }
+        @keyframes hint-cycle {
+          0%,40%   { opacity: 0.55; transform: translateY(0px); }
+          50%      { opacity: 0.8;  transform: translateY(-1px); }
+          60%,100% { opacity: 0.55; transform: translateY(0px); }
+        }
       `}</style>
 
       {/* ── NORMAL UI — opacity-controlled for smooth transition ── */}
@@ -264,11 +243,18 @@ export default function MinimalUI({
       {guidedMode && activeStep.axis === "roll" && (
         <HorizonDial roll={headRotation.roll} targetRoll={activeStep.target} inZone={inZone} />
       )}
-      {guidedMode && activeStep.axis === "pitch" && (
+      {guidedMode && activeStep.axis === "pitch" && !activeStep.axis2 && (
         <PitchDial pitch={headRotation.pitch} targetPitch={activeStep.target} inZone={inZone} />
       )}
-      {guidedMode && activeStep.axis === "yaw" && (
+      {guidedMode && activeStep.axis === "yaw" && !activeStep.axis2 && (
         <YawDial yaw={headRotation.yaw} targetYaw={activeStep.target} inZone={inZone} />
+      )}
+      {/* diagonal: yaw + pitch side-by-side */}
+      {guidedMode && activeStep.axis === "yaw" && activeStep.axis2 === "pitch" && (
+        <>
+          <YawDial   yaw={headRotation.yaw}     targetYaw={activeStep.target}           inZone={inZone} offsetX={-30} />
+          <PitchDial pitch={headRotation.pitch}  targetPitch={activeStep.target2 ?? 0}  inZone={inZone} offsetX={30}  />
+        </>
       )}
 
       {/* ── RESONANCE BURST RINGS ───────────────────────────────── */}
@@ -353,14 +339,16 @@ export default function MinimalUI({
                 color: `${CR}0.75)`,
                 animation: "text-echo 3.6s ease-in-out infinite",
                 userSelect: "none",
-              }}>开始</span>
-              <span style={{
-                fontSize: "7px", letterSpacing: "0.3em",
-                color: `${CR}0.35)`,
-                fontFamily: "monospace",
-                animation: "text-echo 3.6s ease-in-out infinite 0.4s",
-                userSelect: "none",
-              }}>START</span>
+              }}>{t('start', lang)}</span>
+              {lang === 'zh' && (
+                <span style={{
+                  fontSize: "7px", letterSpacing: "0.3em",
+                  color: `${CR}0.35)`,
+                  fontFamily: "monospace",
+                  animation: "text-echo 3.6s ease-in-out infinite 0.4s",
+                  userSelect: "none",
+                }}>START</span>
+              )}
             </div>
           )}
 
@@ -401,6 +389,84 @@ export default function MinimalUI({
           </>)}
         </div>
 
+      {/* ── FREE MODE HINTS — below circle ──────────────────────── */}
+      {!guidedMode && (
+        <div style={{
+          position: "fixed", top: "50%", left: "50%",
+          transform: "translateX(-50%)",
+          marginTop: "82px",
+          zIndex: 100, pointerEvents: "none",
+          textAlign: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
+          width: "220px",
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
+            <span style={{
+              fontSize: "14px", letterSpacing: "0.12em",
+              color: `${CR}0.7)`,
+              fontFamily: "'DM Serif Display', serif", fontStyle: "italic",
+              animation: "hint-cycle 4s ease-in-out infinite",
+            }}>
+              {t('exploreHead', lang)}
+            </span>
+            <span style={{
+              fontSize: "9px", letterSpacing: "0.22em",
+              color: `${CR}0.42)`, fontFamily: "monospace",
+              animation: "hint-cycle 4s ease-in-out infinite 0.3s",
+            }}>
+              EXPLORE THE SPACE
+            </span>
+          </div>
+          <div style={{ width: "1px", height: "12px", background: `${W}0.3)` }} />
+          <span style={{
+            fontSize: "11px", letterSpacing: "0.18em",
+            color: `${W}0.7)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+            animation: "hint-cycle 4s ease-in-out infinite 1.8s",
+          }}>
+            {t('tapToStart', lang)}
+          </span>
+        </div>
+      )}
+
+      {/* ── CAMERA PERMISSION NOTICE + MUSIC TIP (free mode only) ── */}
+      {!guidedMode && (
+        <div style={{
+          position: "fixed", top: "52px", left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 100, pointerEvents: "none",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div style={{
+              width: "5px", height: "5px", borderRadius: "50%",
+              background: `${W}0.55)`,
+              animation: "breathe 3s ease-in-out infinite",
+              flexShrink: 0,
+            }} />
+            <span style={{
+              fontSize: "9px", letterSpacing: "0.14em",
+              color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+            }}>
+              {t('cameraHint', lang)}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <svg width="9" height="9" viewBox="0 0 11 11" style={{ flexShrink: 0, opacity: 0.45 }}>
+              <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${W}1)`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="3.5" cy="8.8" r="1.1" fill={`${W}1)`} />
+              <circle cx="8.5" cy="7.3" r="1.1" fill={`${W}1)`} />
+            </svg>
+            <span style={{
+              fontSize: "9px", letterSpacing: "0.14em",
+              color: `${CR}0.4)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+              animation: "breathe 4s ease-in-out infinite 1s",
+            }}>
+              {t('musicTip', lang)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ── STEP LABEL — fixed below circle ────────────────────── */}
       {guidedMode && !isResonating && (
         <div style={{
@@ -419,7 +485,7 @@ export default function MinimalUI({
             animation: phase === "guide" ? "breathe 3s ease-in-out infinite" : "none",
             transition: "color 0.5s",
           }}>
-            {phase === "hold" ? "保持" : activeStep.label}
+            {phase === "hold" ? t('hold', lang) : stepLabel(activeStep, lang)}
           </span>
           <span style={{
             fontSize: "8px", letterSpacing: "0.28em",
@@ -458,72 +524,91 @@ export default function MinimalUI({
         })}
       </div>}
 
-      {/* ── AURA ORB (bottom right) ─────────────────────────────── */}
+      {/* ── AMPLITUDE PRESETS (bottom right) ────────────────────── */}
       <div style={{
         position: "fixed", bottom: "1.8rem", right: "1.8rem",
         zIndex: 100, pointerEvents: "auto",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+        display: "flex", gap: "4px",
         background: "rgba(255,248,240,0.55)",
         backdropFilter: "blur(10px)",
-        borderRadius: "56px",
-        padding: "14px 14px 8px",
+        borderRadius: "14px",
+        padding: "8px",
         border: `0.5px solid ${W}0.2)`,
       }}>
-        <div style={{ position: "relative", width: "64px", height: "64px" }}>
-          <div style={{
-            position: "absolute", inset: "-12px", borderRadius: "50%",
-            background: `radial-gradient(circle,${W}${(0.07 + holdProgress * 0.18).toFixed(2)}) 0%,transparent 70%)`,
-            filter: "blur(8px)", transition: "background 0.6s",
-          }} />
-          <div ref={orbRef} style={{ width: "64px", height: "64px", borderRadius: "50%", opacity: 0.85, filter: "blur(0.5px)" }} />
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 30%,rgba(255,240,225,0.18) 0%,transparent 60%)",
-          }} />
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            border: `0.5px solid ${W}${inZone ? "0.5" : "0.18"})`,
-            transition: "border-color 0.6s",
-          }} />
+        {customConfig.presets.map((preset, idx) => {
+          const active = idx === activePresetIdx;
+          return (
+            <div
+              key={idx}
+              onClick={() => onPresetChange(idx)}
+              style={{
+                width: "40px", height: "40px", borderRadius: "8px",
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: "1px",
+                cursor: "pointer",
+                background: active ? `${W}0.85)` : "rgba(255,248,240,0.5)",
+                border: `1px solid ${W}${active ? "0.7" : "0.2"})`,
+                transition: "all 0.25s",
+                userSelect: "none",
+              }}
+            >
+              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{presetLabel(preset.label, lang)}</span>
+              <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{preset.angle}°</span>
+            </div>
+          );
+        })}
+        {/* Custom button */}
+        <div
+          onClick={onCustomOpen}
+          title={t('custom', lang)}
+          style={{
+            width: "40px", height: "40px", borderRadius: "8px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+            background: "rgba(255,248,240,0.5)",
+            border: `1px solid ${W}0.2)`,
+            transition: "all 0.25s",
+            userSelect: "none",
+          }}
+        >
+          <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+            <line x1="1" y1="2.5"  x2="15" y2="2.5"  stroke={`${CR}0.5)`} strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="5"  cy="2.5"  r="1.8" fill="rgba(255,248,240,0.9)" stroke={`${CR}0.5)`} strokeWidth="1.2"/>
+            <line x1="1" y1="7"    x2="15" y2="7"    stroke={`${CR}0.5)`} strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="10" cy="7"    r="1.8" fill="rgba(255,248,240,0.9)" stroke={`${CR}0.5)`} strokeWidth="1.2"/>
+            <line x1="1" y1="11.5" x2="15" y2="11.5" stroke={`${CR}0.5)`} strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="6"  cy="11.5" r="1.8" fill="rgba(255,248,240,0.9)" stroke={`${CR}0.5)`} strokeWidth="1.2"/>
+          </svg>
         </div>
-        <span style={{
-          fontSize: "7px", letterSpacing: "0.2em", fontFamily: "monospace",
-          color: inZone ? `${W}0.7)` : `${CR}0.22)`,
-          transition: "color 0.6s",
-        }}>
-          {isResonating ? "RESONANT" : inZone ? "ALIGNED" : "TRACKING"}
-        </span>
+      </div>
 
-        {/* Amplitude preset selector */}
-        <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
-          {AMPLITUDE_PRESETS.map(({ label, sublabel, scale }) => {
-            const active = Math.abs(amplitudeScale - scale) < 0.01;
-            return (
-              <div
-                key={label}
-                onClick={() => onAmplitudeChange(scale)}
-                style={{
-                  width: "32px", height: "32px", borderRadius: "8px",
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", gap: "1px",
-                  cursor: "pointer",
-                  background: active ? `${W}0.85)` : "rgba(255,248,240,0.5)",
-                  border: `1px solid ${W}${active ? "0.7" : "0.2"})`,
-                  transition: "all 0.25s",
-                  userSelect: "none",
-                }}
-              >
-                <span style={{ fontSize: "8px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{label}</span>
-                <span style={{ fontSize: "6px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{sublabel}</span>
-              </div>
-            );
-          })}
-        </div>
+      {/* ── LANG TOGGLE DOT ──────────────────────────────────── */}
+      <div
+        onClick={onToggleLang}
+        title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
+        style={{
+          position: "fixed", bottom: "1.8rem", left: "1.8rem",
+          zIndex: 100, cursor: "pointer",
+          width: "36px", height: "36px", borderRadius: "50%",
+          background: "rgba(255,248,240,0.55)",
+          backdropFilter: "blur(10px)",
+          border: `0.5px solid ${W}0.2)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          userSelect: "none",
+          transition: "all 0.25s",
+        }}
+      >
+        <span style={{
+          fontSize: "9px", letterSpacing: "0.06em",
+          color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+        }}>
+          {lang === 'zh' ? 'EN' : '中'}
+        </span>
       </div>
       </div>
 
       {/* ── COMPLETION RIPPLES ──────────────────────────────────── */}
-      {completionPhase === 'ripple' && [0,1,2,3,4,5,6,7].map((i) => (
+      {(completionPhase === 'ripple' || completionPhase === 'clearing') && [0,1,2,3,4,5,6,7].map((i) => (
         <div key={i} style={{
           position: "fixed", top: "50%", left: "50%",
           width: "120px", height: "120px",
