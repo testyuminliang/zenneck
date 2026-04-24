@@ -49,9 +49,12 @@ async function idbDelete(): Promise<void> {
 }
 
 // ── Hook ──────────────────────────────────────────────────────────
+const CROSSFADE = 4; // seconds of overlap at loop point
+
 type BgmNodes = {
   fadeGain: GainNode;
-  source: AudioBufferSourceNode;
+  masterGain: GainNode;
+  loopTimer: ReturnType<typeof setTimeout> | null;
 };
 
 type CrescendoNodes = {
@@ -72,7 +75,13 @@ export function useAudio() {
   const crescendoRef   = useRef<CrescendoNodes | null>(null);
 
   function getCtx(): AudioContext {
-    if (!ctxRef.current) ctxRef.current = new AudioContext();
+    if (!ctxRef.current) {
+      const ctx = new AudioContext();
+      ctx.addEventListener("statechange", () => {
+        if (ctx.state === "suspended") ctx.resume();
+      });
+      ctxRef.current = ctx;
+    }
     if (ctxRef.current.state === "suspended") ctxRef.current.resume();
     return ctxRef.current;
   }
@@ -133,6 +142,43 @@ export function useAudio() {
   }
 
   // ── BGM ──────────────────────────────────────────────────────────
+  // Plays one segment with crossfade in/out and schedules the next loop.
+  function playBgmSegment(
+    audioBuf: AudioBuffer,
+    masterGain: GainNode,
+    loopRef: { loopTimer: ReturnType<typeof setTimeout> | null },
+    isFirst: boolean,
+  ) {
+    const ctx = getCtx();
+    const duration = audioBuf.duration;
+    const xfade = Math.min(CROSSFADE, duration / 2);
+
+    const segGain = ctx.createGain();
+    segGain.connect(masterGain);
+
+    // Fade in
+    segGain.gain.setValueAtTime(0, ctx.currentTime);
+    segGain.gain.linearRampToValueAtTime(1, ctx.currentTime + (isFirst ? 4.0 : xfade));
+
+    // Fade out near end
+    const fadeOutAt = ctx.currentTime + duration - xfade;
+    segGain.gain.setValueAtTime(1, fadeOutAt);
+    segGain.gain.linearRampToValueAtTime(0, fadeOutAt + xfade);
+
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuf;
+    source.connect(segGain);
+    source.start();
+    source.stop(ctx.currentTime + duration);
+
+    // Schedule next segment to start just before this one fades out
+    const msUntilNext = Math.max(0, (duration - xfade) * 1000);
+    loopRef.loopTimer = setTimeout(() => {
+      if (!bgmRef.current) return; // stopped
+      playBgmSegment(audioBuf, masterGain, loopRef, false);
+    }, msUntilNext);
+  }
+
   const startBGM = useCallback(async () => {
     if (bgmRef.current || bgmStartingRef.current) return;
     const audioBuf = customBufRef.current ?? defaultBufRef.current;
@@ -145,35 +191,30 @@ export function useAudio() {
     const ctx      = getCtx();
     const fadeGain = ctx.createGain();
     fadeGain.gain.setValueAtTime(0, ctx.currentTime);
-    fadeGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 4.0);
+    fadeGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.1);
     fadeGain.connect(ctx.destination);
 
     const masterGain = ctx.createGain();
     masterGain.gain.value = 0.70;
     masterGain.connect(fadeGain);
 
-    const source = ctx.createBufferSource();
-    source.buffer = audioBuf;
-    source.loop   = true;
-    source.connect(masterGain);
-    source.start();
-
-    bgmRef.current = { fadeGain, source };
+    const nodes: BgmNodes = { fadeGain, masterGain, loopTimer: null };
+    bgmRef.current = nodes;
     bgmStartingRef.current = false;
+
+    playBgmSegment(audioBuf, masterGain, nodes, true);
   }, []);
 
   const stopBGM = useCallback(() => {
-    bgmPendingRef.current = false; // 取消待启动
+    bgmPendingRef.current = false;
     const nodes = bgmRef.current;
     if (!nodes) return;
+    bgmRef.current = null; // signal loop scheduler to stop
+    if (nodes.loopTimer !== null) clearTimeout(nodes.loopTimer);
     const ctx = getCtx();
     const now = ctx.currentTime;
     nodes.fadeGain.gain.setValueAtTime(nodes.fadeGain.gain.value, now);
     nodes.fadeGain.gain.linearRampToValueAtTime(0, now + 2.5);
-    setTimeout(() => {
-      try { nodes.source.stop(); } catch { /* ok */ }
-      bgmRef.current = null;
-    }, 2800);
   }, []);
 
   // ── User music upload ─────────────────────────────────────────────

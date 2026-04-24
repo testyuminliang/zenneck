@@ -5,6 +5,8 @@ import ResonanceVortex from "./components/ResonanceVortex";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
 import CustomPanel from "./components/UI/CustomPanel";
+import FluidBackground from "./components/FluidBackground";
+import MeditationOverlay from "./components/MeditationOverlay";
 import { useSequence, STEPS } from "./hooks/useSequence";
 import { useAudio } from "./hooks/useAudio";
 import type { HeadRotation, CustomConfig } from "./types";
@@ -125,16 +127,20 @@ function App() {
     };
   }, []);
 
+  const meditationProgress =
+    phase === "resonance" || phase === "pause" ? 1
+    : phase === "hold" ? holdProgress
+    : 0;
+
   return (
     <div className="app-container">
+      <FluidBackground />
       <Canvas
         camera={{ position: [0, 0, 6], fov: 50, near: 0.1, far: 100 }}
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         dpr={[1, 2]}
-        style={{ background: "#f5ede4" }}
+        style={{ background: "transparent" }}
       >
-        {/* @ts-ignore */}
-        <color attach="background" args={["#f5ede4"]} />
         {/* @ts-ignore */}
         <ambientLight intensity={0.2} />
         {/* @ts-ignore */}
@@ -149,6 +155,8 @@ function App() {
 
         <Preload all />
       </Canvas>
+
+      <MeditationOverlay progress={meditationProgress} />
 
       <MinimalUI
         activeStep={activeStep}
