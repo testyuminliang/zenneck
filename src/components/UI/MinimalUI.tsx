@@ -19,6 +19,7 @@ interface Props {
   completionPhase: 'idle' | 'ripple' | 'clearing' | 'emerging';
   lang: Lang;
   onToggleLang: () => void;
+  cameraActive: boolean;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ export default function MinimalUI({
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
   activePresetIdx, onPresetChange, customConfig, onCustomOpen,
-  completionPhase, lang, onToggleLang,
+  completionPhase, lang, onToggleLang, cameraActive,
 }: Props) {
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
   const isResonating = phase === "resonance" || phase === "pause";
@@ -439,15 +440,17 @@ export default function MinimalUI({
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <div style={{
               width: "5px", height: "5px", borderRadius: "50%",
-              background: `${W}0.55)`,
-              animation: "breathe 3s ease-in-out infinite",
+              background: cameraActive ? "rgba(120,190,120,0.9)" : `${W}0.55)`,
+              boxShadow: cameraActive ? "0 0 5px rgba(120,190,120,0.6)" : "none",
+              animation: cameraActive ? "none" : "breathe 3s ease-in-out infinite",
+              transition: "background 0.6s ease, box-shadow 0.6s ease",
               flexShrink: 0,
             }} />
             <span style={{
               fontSize: "9px", letterSpacing: "0.14em",
               color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
             }}>
-              {t('cameraHint', lang)}
+              {cameraActive ? t('cameraOn', lang) : t('cameraHint', lang)}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>

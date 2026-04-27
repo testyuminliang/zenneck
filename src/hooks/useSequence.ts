@@ -17,7 +17,6 @@ export const STEPS: StepDef[] = [
 
 const RESONANCE_MS = 1800;
 const PAUSE_MS     = 600;  // brief pause between steps
-const GRACE_MS = 600; // ms before resetting when user drifts out of zone
 
 export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, steps = STEPS) {
   const rotRef = useRef(headRotation);
@@ -32,6 +31,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
   const [holdProgress, setHoldProgress] = useState(0);
   const [resonanceProgress, setResonanceProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [inHoldZone, setInHoldZone] = useState(false);
 
   // Mutable refs — used inside rAF loop without re-creating the loop
   const phaseRef = useRef<StepPhase>("guide");
@@ -39,7 +39,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
   const holdStartRef = useRef<number | null>(null);
   const resonanceStartRef = useRef<number | null>(null);
   const pauseStartRef = useRef<number | null>(null);
-  const lostZoneAtRef = useRef<number | null>(null);
+  const holdAccumRef = useRef(0);   // ms accumulated in zone so far this step
   const holdProgressRef = useRef(0);
   const rafRef = useRef<number>(0);
 
@@ -67,30 +67,30 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
 
       if (ph === "guide" || ph === "hold") {
         if (inZone) {
-          lostZoneAtRef.current = null;
+          setInHoldZone(true);
           if (!holdStartRef.current) {
             holdStartRef.current = now;
             syncPhase("hold");
           }
-          const hp = Math.min(1, (now - holdStartRef.current) / step.holdMs);
+          const elapsed = holdAccumRef.current + (now - holdStartRef.current);
+          const hp = Math.min(1, elapsed / step.holdMs);
           holdProgressRef.current = hp;
           setHoldProgress(hp);
 
           if (hp >= 1) {
-            resonanceStartRef.current = now;
+            holdAccumRef.current = 0;
+            holdStartRef.current = null;
             holdProgressRef.current = 0;
+            setInHoldZone(false);
+            resonanceStartRef.current = now;
             syncPhase("resonance");
           }
-        } else if (ph === "hold" ) {
-          // Grace window — don't reset immediately
-          if (!lostZoneAtRef.current) {
-            lostZoneAtRef.current = now;
-          } else if (now - lostZoneAtRef.current > GRACE_MS) {
+        } else if (ph === "hold") {
+          // Left zone — freeze accumulated time, stay in hold phase
+          setInHoldZone(false);
+          if (holdStartRef.current !== null) {
+            holdAccumRef.current += now - holdStartRef.current;
             holdStartRef.current = null;
-            lostZoneAtRef.current = null;
-            holdProgressRef.current = 0;
-            setHoldProgress(0);
-            syncPhase("guide");
           }
         }
       } else if (ph === "resonance") {
@@ -107,9 +107,9 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
           const next = isLast ? 0 : stepIndexRef.current + 1;
           stepIndexRef.current = next;
           holdStartRef.current = null;
+          holdAccumRef.current = 0;
           resonanceStartRef.current = null;
           pauseStartRef.current = null;
-          lostZoneAtRef.current = null;
           holdProgressRef.current = 0;
           setStepIndex(next);
           setHoldProgress(0);
@@ -139,6 +139,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
     activeStep,
     phase,
     holdProgress,
+    inHoldZone,
     resonanceProgress,
     totalSteps: steps.length,
     isCompleted,

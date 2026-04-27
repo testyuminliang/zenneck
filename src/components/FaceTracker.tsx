@@ -5,10 +5,11 @@ import type { HeadRotation } from "../types";
 
 interface FaceTrackerProps {
   onHeadRotationChange: (rotation: HeadRotation) => void;
+  onCameraActive?: () => void;
 }
 
 const FaceTracker = forwardRef<any, FaceTrackerProps>(
-  ({ onHeadRotationChange }, ref) => {
+  ({ onHeadRotationChange, onCameraActive }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
     const animationIdRef = useRef<number | null>(null);
@@ -52,6 +53,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             videoRef.current.onloadedmetadata = () => {
               videoRef.current?.play();
               isInitializedRef.current = true;
+              onCameraActive?.();
               trackFace();
             };
           }

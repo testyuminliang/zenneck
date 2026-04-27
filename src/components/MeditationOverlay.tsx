@@ -145,8 +145,12 @@ function CondenseBloom({ progress }: { progress: number }) {
     const R = Math.min(w, h) * 0.22;
     const seeds = seedsRef.current!;
 
+    // fade in gradually so blobs don't pop over the background at hold start
+    const fadeIn = Math.min(1, p * 5);
+
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    // use normal blend at low progress (matches background look), screen only near completion
+    ctx.globalCompositeOperation = e > 0.7 ? "screen" : "normal";
     for (let i = 0; i < seeds.length; i++) {
       const s = seeds[i];
       const ang = s.baseAng + t * s.orbitSpd;
@@ -158,7 +162,7 @@ function CondenseBloom({ progress }: { progress: number }) {
       const bx = cx + Math.cos(ang) * rad + Math.cos(ang + Math.PI / 2) * tan;
       const by = cy + Math.sin(ang) * rad + Math.sin(ang + Math.PI / 2) * tan;
       const blobR = R * lerp(1.35, 0.7, e);
-      const alpha = lerp(0.62, 0.38, e);
+      const alpha = lerp(0.55, 0.38, e) * fadeIn;
       const g = ctx.createRadialGradient(bx, by, 0, bx, by, blobR);
       g.addColorStop(0, hexToRgba(s.col, alpha));
       g.addColorStop(0.45, hexToRgba(s.col, alpha * 0.55));
@@ -170,7 +174,7 @@ function CondenseBloom({ progress }: { progress: number }) {
 
     // central bloom
     const orbR = R * lerp(0.3, 1, e);
-    const orbA = lerp(0.15, 0.95, e);
+    const orbA = lerp(0.15, 0.95, e) * fadeIn;
     const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR);
     core.addColorStop(0, `rgba(255,250,240,${orbA})`);
     core.addColorStop(0.5, `rgba(255,240,220,${orbA * 0.3})`);

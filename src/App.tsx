@@ -37,6 +37,7 @@ function App() {
   });
   const [showCustomPanel, setShowCustomPanel] = useState(false);
   const [lang, setLang] = useState<Lang>('zh');
+  const [cameraActive, setCameraActive] = useState(false);
 
   // Persist config changes to localStorage
   useEffect(() => {
@@ -51,7 +52,7 @@ function App() {
   const [completionPhase, setCompletionPhase] = useState<CompletionPhase>('idle');
   const faceTrackerRef = useRef<any>(null);
 
-  const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
+  const { stepIndex, activeStep, phase, holdProgress, inHoldZone, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
     useSequence(headRotation, amplitudeScale, activeSteps);
 
   const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
@@ -78,10 +79,11 @@ function App() {
     prevPhaseRef.current = phase;
   }, [phase, guidedMode]);
 
-  // 渐强音随 holdProgress 实时更新
+  // 渐强音随 holdProgress 实时更新；离开区域时静音，回来时恢复
   useEffect(() => {
-    if (phase === "hold" && guidedMode && customConfig.sfxEnabled) updateCrescendo(holdProgress);
-  }, [holdProgress, phase, guidedMode]);
+    if (phase === "hold" && guidedMode && customConfig.sfxEnabled)
+      updateCrescendo(inHoldZone ? holdProgress : 0);
+  }, [holdProgress, inHoldZone, phase, guidedMode]);
 
 
   useEffect(() => {
@@ -133,6 +135,7 @@ function App() {
         completionPhase={completionPhase}
         lang={lang}
         onToggleLang={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
+        cameraActive={cameraActive}
       />
 
       {showCustomPanel && (
@@ -195,6 +198,7 @@ function App() {
       <FaceTracker
         ref={faceTrackerRef}
         onHeadRotationChange={setHeadRotation}
+        onCameraActive={() => setCameraActive(true)}
       />
     </div>
   );

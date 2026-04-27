@@ -6,6 +6,7 @@ export const UI = {
   exploreHead:     { zh: '轻轻转动你的头部',  en: 'Gently move your head' },
   tapToStart:      { zh: '点击圆圈开始引导练习', en: 'Tap circle to start' },
   cameraHint:      { zh: '请确保摄像头权限已开启', en: 'Allow camera access' },
+  cameraOn:        { zh: '摄像头已开启',          en: 'Camera active'       },
   sessionComplete: { zh: '练习完成',         en: 'Session Complete'    },
   bgm:             { zh: '背景音乐',         en: 'Music'               },
   sfx:             { zh: '音效',            en: 'SFX'                 },
