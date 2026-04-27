@@ -126,6 +126,15 @@ export function useAudio() {
 
     loadBgm();
     loadSfx();
+
+    return () => {
+      const nodes = bgmRef.current;
+      if (nodes) {
+        try { nodes.source.stop(); } catch { /* ok */ }
+        bgmRef.current = null;
+      }
+      bgmPendingRef.current = false;
+    };
   }, []);
 
   function playSfxBuffer(buf: AudioBuffer, volume = 0.8) {

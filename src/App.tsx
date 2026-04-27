@@ -61,7 +61,8 @@ function App() {
   useEffect(() => {
     if (customConfig.bgmEnabled) startBGM();
     else stopBGM();
-  }, [customConfig.bgmEnabled]);
+    return () => stopBGM();
+  }, [customConfig.bgmEnabled, startBGM, stopBGM]);
 
   // Phase 转换音效
   const prevPhaseRef = useRef<string>("guide");
