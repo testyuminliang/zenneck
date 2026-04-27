@@ -17,11 +17,12 @@ const DEFAULT_CONFIG: CustomConfig = {
   presets: [
     { label: "轻", angle: 13 },
     { label: "中", angle: 20 },
-    { label: "深", angle: 40 },
+    { label: "深", angle: 30 },
   ],
   stepOrder: STEPS.map(s => s.id),
   bgmEnabled: true,
   sfxEnabled: true,
+  voiceCuesEnabled: false,
 };
 
 function App() {
@@ -55,7 +56,7 @@ function App() {
   const { stepIndex, activeStep, phase, holdProgress, inHoldZone, resonanceProgress, totalSteps, isCompleted, resetCompleted, resetAll } =
     useSequence(headRotation, amplitudeScale, activeSteps, guidedMode);
 
-  const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
+  const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete, playCue } = useAudio();
 
   // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
   useEffect(() => {
@@ -64,13 +65,73 @@ function App() {
     return () => stopBGM();
   }, [customConfig.bgmEnabled, startBGM, stopBGM]);
 
+  // Voice cue — fires when a new step starts in guided mode
+  useEffect(() => {
+    if (!guidedMode || !customConfig.voiceCuesEnabled || phase !== "guide" || isCompleted) return;
+    playCue(activeStep.id, lang, 2);
+  }, [stepIndex, guidedMode]);
+
+  // Voice cue — fires when movement reaches 40% of target in guide phase; repeats after 4s if still not in hold
+  const movementCueFiredRef = useRef(false);
+  const movementRepeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!guidedMode || !customConfig.voiceCuesEnabled || isCompleted) return;
+    if (phase !== "guide") {
+      movementCueFiredRef.current = false;
+      if (movementRepeatTimerRef.current) { clearTimeout(movementRepeatTimerRef.current); movementRepeatTimerRef.current = null; }
+      return;
+    }
+    if (movementCueFiredRef.current) return;
+    const value = Math.abs(headRotation[activeStep.axis as keyof typeof headRotation]);
+    const threshold = Math.abs(activeStep.target) * 0.4;
+    if (value >= threshold && threshold > 2) {
+      movementCueFiredRef.current = true;
+      playCue(-2, lang, 0);
+      movementRepeatTimerRef.current = setTimeout(() => {
+        movementRepeatTimerRef.current = null;
+        movementCueFiredRef.current = false; // allow re-fire so it can repeat again if still not in hold
+      }, 4000);
+    }
+  }, [headRotation, phase, guidedMode]);
+
+  // Voice cue — "慢慢来" after 3s out of hold zone, then "保持" on return
+  const leftZoneAtRef = useRef<number | null>(null);
+  const returnCueFiredRef = useRef(false);
+  const returnCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!guidedMode || !customConfig.voiceCuesEnabled || phase !== "hold" || isCompleted) {
+      leftZoneAtRef.current = null;
+      returnCueFiredRef.current = false;
+      if (returnCueTimerRef.current) { clearTimeout(returnCueTimerRef.current); returnCueTimerRef.current = null; }
+      return;
+    }
+    if (!inHoldZone) {
+      if (leftZoneAtRef.current === null) {
+        leftZoneAtRef.current = Date.now();
+        returnCueFiredRef.current = false;
+        returnCueTimerRef.current = setTimeout(() => {
+          playCue(-2, lang, 0);
+          returnCueFiredRef.current = true;
+        }, 2000);
+      }
+    } else {
+      if (returnCueTimerRef.current) { clearTimeout(returnCueTimerRef.current); returnCueTimerRef.current = null; }
+      if (returnCueFiredRef.current) {
+        playCue(-1, lang, 1);
+      }
+      leftZoneAtRef.current = null;
+      returnCueFiredRef.current = false;
+    }
+  }, [inHoldZone, phase, guidedMode]);
+
   // Phase 转换音效
   const prevPhaseRef = useRef<string>("guide");
   useEffect(() => {
-    if (!guidedMode) { prevPhaseRef.current = phase; return; }
+    if (!guidedMode || isCompleted) { prevPhaseRef.current = phase; return; }
     const prev = prevPhaseRef.current;
     if (phase === "hold" && prev === "guide") {
       if (customConfig.sfxEnabled) startCrescendo();
+      if (customConfig.voiceCuesEnabled) playCue(-1, lang);
     } else if (phase === "resonance" && prev === "hold") {
       stopCrescendo();
       if (customConfig.sfxEnabled) playStepComplete();
@@ -91,6 +152,7 @@ function App() {
     if (!isCompleted) return;
     stopCrescendo();
     if (customConfig.sfxEnabled) playSessionComplete();
+    if (customConfig.voiceCuesEnabled) setTimeout(() => playCue(-3, lang, 2), 800);
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
     const t2 = setTimeout(() => {

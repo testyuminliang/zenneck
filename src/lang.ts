@@ -15,6 +15,7 @@ export const UI = {
   custom:          { zh: '定制',            en: 'CUSTOM'              },
   steps:           { zh: '练习步骤',         en: 'STEPS'               },
   musicTip:        { zh: '开启音乐，体验更佳', en: 'Music on for best experience' },
+  voiceCues:       { zh: '语音提示',          en: 'Voice'                        },
 } as const;
 
 export function t(key: keyof typeof UI, lang: Lang): string {

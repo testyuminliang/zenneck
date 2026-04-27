@@ -118,6 +118,16 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
               pitch: smoothedPitchRef.current,
               yaw:   smoothedYawRef.current,
             });
+          } else {
+            // 没有检测到人脸 — 平滑归零，避免数值冻结在最后位置
+            smoothedRollRef.current  = THREE.MathUtils.lerp(smoothedRollRef.current,  0, 0.15);
+            smoothedPitchRef.current = THREE.MathUtils.lerp(smoothedPitchRef.current, 0, 0.15);
+            smoothedYawRef.current   = THREE.MathUtils.lerp(smoothedYawRef.current,   0, 0.15);
+            onHeadRotationChange({
+              roll:  smoothedRollRef.current,
+              pitch: smoothedPitchRef.current,
+              yaw:   smoothedYawRef.current,
+            });
           }
         } catch (e) {
           console.error("Face detect error:", e);
