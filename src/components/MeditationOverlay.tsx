@@ -150,7 +150,7 @@ function CondenseBloom({ progress }: { progress: number }) {
 
     ctx.save();
     // use normal blend at low progress (matches background look), screen only near completion
-    ctx.globalCompositeOperation = e > 0.7 ? "screen" : "normal";
+    ctx.globalCompositeOperation = e > 0.7 ? "screen" : "source-over";
     for (let i = 0; i < seeds.length; i++) {
       const s = seeds[i];
       const ang = s.baseAng + t * s.orbitSpd;
