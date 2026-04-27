@@ -113,23 +113,29 @@ function HoldArc({ progress, size = 230, color = "#fff2d8" }: { progress: number
 }
 
 // ── CondenseBloom ─────────────────────────────────────────────────────
-const PALETTE = ["#ffcab0", "#f0c4dc", "#d4c4ec", "#f8d8b8"];
-const DEEP_PALETTE = ["#f5b598", "#e8a8c4", "#c4a8dc", "#b8b4e0", "#f0c898"];
-
 interface BloomSeed {
   baseAng: number; orbitSpd: number; wobA: number; wobF: number;
-  tanA: number; tanF: number; col: string;
+  tanA: number; tanF: number;
 }
 
-function CondenseBloom({ progress, arcProgress }: { progress: number; arcProgress: number }) {
+const BLOOM_N = 8; // fixed seed count (palette.length * 2 for default 4-color palette)
+
+function CondenseBloom({ progress, arcProgress, palette, deepPalette }: {
+  progress: number; arcProgress: number;
+  palette: string[]; deepPalette: string[];
+}) {
   const pRef = useRef(progress);
   useEffect(() => { pRef.current = progress; }, [progress]);
   const arcRef = useRef(arcProgress);
   useEffect(() => { arcRef.current = arcProgress; }, [arcProgress]);
+  const paletteRef = useRef(palette);
+  useEffect(() => { paletteRef.current = palette; }, [palette]);
+  const deepRef = useRef(deepPalette);
+  useEffect(() => { deepRef.current = deepPalette; }, [deepPalette]);
 
   const seedsRef = useRef<BloomSeed[] | null>(null);
   if (seedsRef.current == null) {
-    const N = PALETTE.length * 2;
+    const N = BLOOM_N;
     seedsRef.current = Array.from({ length: N }, (_, i) => ({
       baseAng: (i / N) * Math.PI * 2 + i * 0.17,
       orbitSpd: 0.06 + (i % 3) * 0.018,
@@ -137,7 +143,6 @@ function CondenseBloom({ progress, arcProgress }: { progress: number; arcProgres
       wobF: 0.35 + (i % 3) * 0.12,
       tanA: 0.18 + (i % 5) * 0.04,
       tanF: 0.28 + (i % 4) * 0.1,
-      col: PALETTE[i % PALETTE.length],
     }));
   }
 
@@ -167,10 +172,11 @@ function CondenseBloom({ progress, arcProgress }: { progress: number; arcProgres
       const by = cy + Math.sin(ang) * rad + Math.sin(ang + Math.PI / 2) * tan;
       const blobR = R * lerp(1.35, 0.7, e);
       const alpha = lerp(0.55, 0.38, e) * fadeIn;
+      const col = paletteRef.current[i % paletteRef.current.length];
       const g = ctx.createRadialGradient(bx, by, 0, bx, by, blobR);
-      g.addColorStop(0, hexToRgba(s.col, alpha));
-      g.addColorStop(0.45, hexToRgba(s.col, alpha * 0.55));
-      g.addColorStop(1, hexToRgba(s.col, 0));
+      g.addColorStop(0, hexToRgba(col, alpha));
+      g.addColorStop(0.45, hexToRgba(col, alpha * 0.55));
+      g.addColorStop(1, hexToRgba(col, 0));
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(bx, by, blobR, 0, Math.PI * 2); ctx.fill();
     }
@@ -191,7 +197,7 @@ function CondenseBloom({ progress, arcProgress }: { progress: number; arcProgres
       const a = (e - 0.35) / 0.65;
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      DEEP_PALETTE.forEach((col, i) => {
+      deepRef.current.forEach((col: string, i: number) => {
         const rr = R * (1.18 + i * 0.20);
         const thickness = 14 + i * 7;
         const g = ctx.createRadialGradient(cx, cy, rr - thickness, cx, cy, rr + thickness);
@@ -244,18 +250,27 @@ function CondenseBloom({ progress, arcProgress }: { progress: number; arcProgres
 
 // ── Main export ───────────────────────────────────────────────────────
 interface Props {
-  /** 0 = default/guide, 0–1 = hold phase, 1 = completed */
   progress: number;
+  bloomPalette: string[];
+  deepPalette: string[];
+  arcColor: string;
 }
 
-export default function MeditationOverlay({ progress }: Props) {
+export default function MeditationOverlay({ progress, bloomPalette, deepPalette, arcColor }: Props) {
   const showHold = progress > 0.02 && progress < 0.95;
   const showBloom = progress > 0.02;
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-      {showBloom && <CondenseBloom progress={progress} arcProgress={showHold ? progress : 0} />}
+      {showBloom && (
+        <CondenseBloom
+          progress={progress}
+          arcProgress={showHold ? progress : 0}
+          palette={bloomPalette}
+          deepPalette={deepPalette}
+        />
+      )}
       {showHold && <HoldShrinkRing progress={progress} />}
-      {showHold && <HoldArc progress={progress} />}
+      {showHold && <HoldArc progress={progress} color={arcColor} />}
     </div>
   );
 }

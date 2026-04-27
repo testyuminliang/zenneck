@@ -9,6 +9,7 @@ import { useAudio } from "./hooks/useAudio";
 import type { HeadRotation, CustomConfig } from "./types";
 import type { Lang } from "./lang";
 import { t } from "./lang";
+import { getTheme } from "./themes";
 import "./App.css";
 
 const BASE_ANGLE = 20;
@@ -45,6 +46,7 @@ function App() {
     localStorage.setItem("zenneck-config", JSON.stringify(customConfig));
   }, [customConfig]);
 
+  const theme = getTheme(customConfig.themeKey);
   const amplitudeScale = customConfig.presets[activePresetIdx].angle / BASE_ANGLE;
   const activeSteps = customConfig.stepOrder
     .map(id => STEPS.find(s => s.id === id)!)
@@ -178,10 +180,17 @@ function App() {
   return (
     <div className="app-container">
       <FluidBackground
+        palette={theme.bgPalette}
+        baseColor={theme.bgBase}
         headOffset={!guidedMode ? { x: headRotation.yaw / 20, y: -headRotation.pitch / 20 } : undefined}
       />
 
-      <MeditationOverlay progress={meditationProgress} />
+      <MeditationOverlay
+        progress={meditationProgress}
+        bloomPalette={theme.bloomPalette}
+        deepPalette={theme.deepPalette}
+        arcColor={theme.arcColor}
+      />
 
       <MinimalUI
         activeStep={activeStep}
