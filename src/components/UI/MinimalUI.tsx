@@ -585,28 +585,50 @@ export default function MinimalUI({
         </div>
       </div>
 
-      {/* ── LANG TOGGLE DOT ──────────────────────────────────── */}
-      <div
-        onClick={onToggleLang}
-        title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
-        style={{
-          position: "fixed", bottom: "1.8rem", left: "1.8rem",
-          zIndex: 100, cursor: "pointer",
-          width: "36px", height: "36px", borderRadius: "50%",
-          background: "rgba(255,248,240,0.55)",
-          backdropFilter: "blur(10px)",
-          border: `0.5px solid ${W}0.2)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          userSelect: "none",
-          transition: "all 0.25s",
-        }}
-      >
-        <span style={{
-          fontSize: "9px", letterSpacing: "0.06em",
-          color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
-        }}>
-          {lang === 'zh' ? 'EN' : '中'}
-        </span>
+      {/* ── BOTTOM LEFT: back-to-free (guided) + lang toggle ─── */}
+      <div style={{
+        position: "fixed", bottom: "1.8rem", left: "1.8rem",
+        zIndex: 100, display: "flex", gap: "8px", alignItems: "center",
+      }}>
+        {/* Exit guided mode button — only shown in guided mode */}
+        {guidedMode && (
+          <div
+            onClick={onToggleGuidedMode}
+            title={lang === 'zh' ? '返回自由模式' : 'Back to free mode'}
+            style={{
+              width: "36px", height: "36px", borderRadius: "50%",
+              background: "rgba(255,248,240,0.55)",
+              backdropFilter: "blur(10px)",
+              border: `0.5px solid ${W}0.2)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", userSelect: "none", transition: "all 0.25s",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <polyline points="7,2 3,6 7,10" stroke={`${CR}0.6)`} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
+        {/* Lang toggle */}
+        <div
+          onClick={onToggleLang}
+          title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
+          style={{
+            width: "36px", height: "36px", borderRadius: "50%",
+            background: "rgba(255,248,240,0.55)",
+            backdropFilter: "blur(10px)",
+            border: `0.5px solid ${W}0.2)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", userSelect: "none", transition: "all 0.25s",
+          }}
+        >
+          <span style={{
+            fontSize: "9px", letterSpacing: "0.06em",
+            color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+          }}>
+            {lang === 'zh' ? 'EN' : '中'}
+          </span>
+        </div>
       </div>
       </div>
 

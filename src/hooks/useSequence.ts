@@ -137,6 +137,21 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
     ...(rawStep.target2 !== undefined ? { target2: rawStep.target2 * amplitudeScale } : {}),
   };
 
+  const resetAll = () => {
+    stepIndexRef.current = 0;
+    holdStartRef.current = null;
+    holdAccumRef.current = 0;
+    resonanceStartRef.current = null;
+    pauseStartRef.current = null;
+    holdProgressRef.current = 0;
+    setStepIndex(0);
+    setHoldProgress(0);
+    setResonanceProgress(0);
+    setInHoldZone(false);
+    setIsCompleted(false);
+    syncPhase("guide");
+  };
+
   return {
     stepIndex,
     activeStep,
@@ -147,5 +162,6 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
     totalSteps: steps.length,
     isCompleted,
     resetCompleted: () => { setIsCompleted(false); syncPhase("guide"); },
+    resetAll,
   };
 }

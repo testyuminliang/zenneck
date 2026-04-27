@@ -52,7 +52,7 @@ function App() {
   const [completionPhase, setCompletionPhase] = useState<CompletionPhase>('idle');
   const faceTrackerRef = useRef<any>(null);
 
-  const { stepIndex, activeStep, phase, holdProgress, inHoldZone, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
+  const { stepIndex, activeStep, phase, holdProgress, inHoldZone, resonanceProgress, totalSteps, isCompleted, resetCompleted, resetAll } =
     useSequence(headRotation, amplitudeScale, activeSteps, guidedMode);
 
   const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
@@ -130,7 +130,10 @@ function App() {
         totalSteps={totalSteps}
         headRotation={headRotation}
         guidedMode={guidedMode}
-        onToggleGuidedMode={() => setGuidedMode((v) => !v)}
+        onToggleGuidedMode={() => {
+          if (guidedMode) resetAll();
+          setGuidedMode((v) => !v);
+        }}
         activePresetIdx={activePresetIdx}
         onPresetChange={setActivePresetIdx}
         customConfig={customConfig}
