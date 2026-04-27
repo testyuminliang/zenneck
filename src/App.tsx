@@ -19,7 +19,7 @@ const DEFAULT_CONFIG: CustomConfig = {
     { label: "中", angle: 20 },
     { label: "深", angle: 30 },
   ],
-  stepOrder: STEPS.map(s => s.id),
+  stepOrder: [2, 3, 0, 1, 4, 5],
   bgmEnabled: true,
   sfxEnabled: true,
   voiceCuesEnabled: false,
