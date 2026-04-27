@@ -48,10 +48,24 @@ async function idbDelete(): Promise<void> {
   } catch { /* ignore */ }
 }
 
+// ── MP3 gapless loop helper ───────────────────────────────────────
+// MP3 encoders pad silence at the start and end of the file.
+// Detect the actual audio boundaries so loopStart/loopEnd skip the padding.
+function detectLoopBounds(buffer: AudioBuffer, threshold = 0.0005): { start: number; end: number } {
+  const data = buffer.getChannelData(0);
+  const sr   = buffer.sampleRate;
+  let s = 0;
+  let e = data.length - 1;
+  while (s < data.length && Math.abs(data[s]) < threshold) s++;
+  while (e > s       && Math.abs(data[e]) < threshold) e--;
+  return { start: s / sr, end: (e + 1) / sr };
+}
+
 // ── Hook ──────────────────────────────────────────────────────────
 type BgmNodes = {
-  fadeGain: GainNode;
   source: AudioBufferSourceNode;
+  segGain: GainNode;
+  masterGain: GainNode;
 };
 
 type CrescendoNodes = {
@@ -63,6 +77,7 @@ export function useAudio() {
   const ctxRef          = useRef<AudioContext | null>(null);
   const bgmRef          = useRef<BgmNodes | null>(null);
   const bgmStartingRef  = useRef(false);
+  const bgmStoppingRef  = useRef(false); // fade-out in progress — block new startBGM
   const bgmPendingRef   = useRef(false); // startBGM 被调用时 buffer 尚未就绪
   const customBufRef    = useRef<AudioBuffer | null>(null);
   const defaultBufRef  = useRef<AudioBuffer | null>(null);
@@ -70,9 +85,18 @@ export function useAudio() {
   const sfxSessionBufRef = useRef<AudioBuffer | null>(null);
   const sfxHoldBufRef    = useRef<AudioBuffer | null>(null);
   const crescendoRef   = useRef<CrescendoNodes | null>(null);
+  const cueBufsRef     = useRef<Map<string, AudioBuffer>>(new Map());
+  const activeCueRef        = useRef<{ source: AudioBufferSourceNode; gain: GainNode } | null>(null);
+  const cueProtectedUntilRef = useRef(0); // ms timestamp — low-priority cues can't interrupt before this
 
   function getCtx(): AudioContext {
-    if (!ctxRef.current) ctxRef.current = new AudioContext();
+    if (!ctxRef.current) {
+      const ctx = new AudioContext();
+      ctx.addEventListener("statechange", () => {
+        if (ctx.state === "suspended") ctx.resume();
+      });
+      ctxRef.current = ctx;
+    }
     if (ctxRef.current.state === "suspended") ctxRef.current.resume();
     return ctxRef.current;
   }
@@ -117,8 +141,38 @@ export function useAudio() {
       } catch { /* no SFX */ }
     };
 
+    const CUE_KEYS = [
+      "tilt-right","tilt-left","look-up","look-down",
+      "turn-right","turn-left","up-right","up-left",
+      "down-right","down-left","hold","complete","return",
+    ];
+    const loadCues = async () => {
+      const ctx = getCtx();
+      await Promise.all(
+        ["zh","en"].flatMap(lang =>
+          CUE_KEYS.map(async key => {
+            try {
+              const res = await fetch(`/audio/cues/cue-${key}-${lang}.mp3`);
+              const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+              cueBufsRef.current.set(`${key}-${lang}`, buf);
+            } catch { /* missing file — skip */ }
+          })
+        )
+      );
+    };
+
     loadBgm();
     loadSfx();
+    loadCues();
+
+    return () => {
+      const nodes = bgmRef.current;
+      if (nodes) {
+        try { nodes.source.stop(); } catch { /* ok */ }
+        bgmRef.current = null;
+      }
+      bgmPendingRef.current = false;
+    };
   }, []);
 
   function playSfxBuffer(buf: AudioBuffer, volume = 0.8) {
@@ -133,47 +187,57 @@ export function useAudio() {
   }
 
   // ── BGM ──────────────────────────────────────────────────────────
+  // Uses source.loop = true for sample-accurate seamless looping.
+  // No setTimeout scheduling — the Web Audio engine handles the loop point.
   const startBGM = useCallback(async () => {
-    if (bgmRef.current || bgmStartingRef.current) return;
+    if (bgmRef.current || bgmStartingRef.current || bgmStoppingRef.current) return;
     const audioBuf = customBufRef.current ?? defaultBufRef.current;
     if (!audioBuf) {
-      bgmPendingRef.current = true; // 记住：buffer 就绪后自动启动
+      bgmPendingRef.current = true;
       return;
     }
 
     bgmStartingRef.current = true;
-    const ctx      = getCtx();
-    const fadeGain = ctx.createGain();
-    fadeGain.gain.setValueAtTime(0, ctx.currentTime);
-    fadeGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 4.0);
-    fadeGain.connect(ctx.destination);
+    const ctx = getCtx();
 
     const masterGain = ctx.createGain();
     masterGain.gain.value = 0.70;
-    masterGain.connect(fadeGain);
+    masterGain.connect(ctx.destination);
 
+    // Fade in over 4 s on a separate gain so stopBGM can ramp it down cleanly
+    const segGain = ctx.createGain();
+    segGain.gain.setValueAtTime(0, ctx.currentTime);
+    segGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 4.0);
+    segGain.connect(masterGain);
+
+    const { start: loopStart, end: loopEnd } = detectLoopBounds(audioBuf);
     const source = ctx.createBufferSource();
     source.buffer = audioBuf;
-    source.loop   = true;
-    source.connect(masterGain);
-    source.start();
+    source.loop      = true;
+    source.loopStart = loopStart;
+    source.loopEnd   = loopEnd;
+    source.connect(segGain);
+    source.start(0, loopStart);
 
-    bgmRef.current = { fadeGain, source };
+    bgmRef.current = { source, segGain, masterGain };
     bgmStartingRef.current = false;
   }, []);
 
   const stopBGM = useCallback(() => {
-    bgmPendingRef.current = false; // 取消待启动
+    bgmPendingRef.current = false;
     const nodes = bgmRef.current;
     if (!nodes) return;
+    bgmRef.current = null;
+    bgmStoppingRef.current = true;
     const ctx = getCtx();
     const now = ctx.currentTime;
-    nodes.fadeGain.gain.setValueAtTime(nodes.fadeGain.gain.value, now);
-    nodes.fadeGain.gain.linearRampToValueAtTime(0, now + 2.5);
+    nodes.segGain.gain.setValueAtTime(nodes.segGain.gain.value, now);
+    nodes.segGain.gain.linearRampToValueAtTime(0, now + 2.5);
     setTimeout(() => {
-      try { nodes.source.stop(); } catch { /* ok */ }
-      bgmRef.current = null;
-    }, 2800);
+      try { nodes.source.stop(); } catch { /* already stopped */ }
+      bgmStoppingRef.current = false;
+      if (bgmPendingRef.current) { bgmPendingRef.current = false; startBGM(); }
+    }, 2600);
   }, []);
 
   // ── User music upload ─────────────────────────────────────────────
@@ -191,7 +255,6 @@ export function useAudio() {
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
   }, [stopBGM, startBGM]);
 
-  // ── Hold phase：过滤白噪声，像一波海浪/风缓缓涌上 ─────────────────
   // ── Hold phase：播放 sfx-hold-loop.mp3，音量随 progress 渐强 ──────
   const startCrescendo = useCallback(() => {
     if (crescendoRef.current || !sfxHoldBufRef.current) return;
@@ -212,7 +275,7 @@ export function useAudio() {
   const updateCrescendo = useCallback((progress: number) => {
     const node = crescendoRef.current;
     if (!node) return;
-    node.masterGain.gain.setTargetAtTime(progress * 0.75, getCtx().currentTime, 0.15);
+    node.masterGain.gain.setTargetAtTime(progress * 1.8, getCtx().currentTime, 0.15);
   }, []);
 
   const stopCrescendo = useCallback(() => {
@@ -224,21 +287,63 @@ export function useAudio() {
     setTimeout(() => { try { node.source.stop(); } catch { /* ok */ } }, 600);
   }, []);
 
+  // ── Voice cue map (step id → cue file key) ───────────────────────
+  const STEP_CUE_KEY: Record<number, string> = {
+    [-1]: "hold",
+    [-2]: "return",
+    [-3]: "complete",
+    0: "tilt-right", 1: "tilt-left", 2: "look-up",    3: "look-down",
+    4: "turn-right", 5: "turn-left", 6: "up-right",   7: "up-left",
+    8: "down-right", 9: "down-left",
+  };
+
+  // priority: 2 = step name (protected 2s), 1 = hold/return (can interrupt low), 0 = 还差一点 (blocked during protection)
+  const playCue = useCallback((stepId: number, lang: "zh" | "en", priority = 1) => {
+    const key = STEP_CUE_KEY[stepId];
+    if (!key) return;
+    const buf = cueBufsRef.current.get(`${key}-${lang}`);
+    if (!buf) return;
+
+    const now = Date.now();
+    if (priority === 0 && now < cueProtectedUntilRef.current) return;
+
+    const prev = activeCueRef.current;
+    if (prev) {
+      activeCueRef.current = null;
+      const ctx = getCtx();
+      prev.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+      setTimeout(() => { try { prev.source.stop(); } catch { /* ok */ } }, 300);
+    }
+
+    if (priority === 2) cueProtectedUntilRef.current = now + 2000;
+
+    const ctx = getCtx();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.75;
+    gain.connect(ctx.destination);
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    source.connect(gain);
+    source.onended = () => { if (activeCueRef.current?.source === source) activeCueRef.current = null; };
+    source.start();
+    activeCueRef.current = { source, gain };
+  }, []);
+
   // ── Step complete chime ───────────────────────────────────────────
   const playStepComplete = useCallback(() => {
-    if (sfxStepBufRef.current) playSfxBuffer(sfxStepBufRef.current, 0.8);
+    if (sfxStepBufRef.current) playSfxBuffer(sfxStepBufRef.current, 1.2);
   }, []);
 
   // ── Session complete ──────────────────────────────────────────────
   const playSessionComplete = useCallback(() => {
-    if (sfxSessionBufRef.current) playSfxBuffer(sfxSessionBufRef.current, 0.85);
+    if (sfxSessionBufRef.current) playSfxBuffer(sfxSessionBufRef.current, 1.3);
   }, []);
 
   return {
     startBGM, stopBGM,
     loadCustomBgm, clearCustomBgm,
     startCrescendo, updateCrescendo, stopCrescendo,
-    playStepComplete, playSessionComplete,
+    playStepComplete, playSessionComplete, playCue,
   };
 }
 

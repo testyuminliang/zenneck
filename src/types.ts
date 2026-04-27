@@ -12,6 +12,7 @@ export interface CustomConfig {
   stepOrder: number[];   // ordered step IDs (subset of all STEPS)
   bgmEnabled: boolean;
   sfxEnabled: boolean;
+  voiceCuesEnabled: boolean;
   customBgmName?: string; // filename shown in UI; actual audio stored in IndexedDB
 }
 

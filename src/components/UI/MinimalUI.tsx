@@ -19,6 +19,7 @@ interface Props {
   completionPhase: 'idle' | 'ripple' | 'clearing' | 'emerging';
   lang: Lang;
   onToggleLang: () => void;
+  cameraActive: boolean;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ export default function MinimalUI({
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
   activePresetIdx, onPresetChange, customConfig, onCustomOpen,
-  completionPhase, lang, onToggleLang,
+  completionPhase, lang, onToggleLang, cameraActive,
 }: Props) {
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
   const isResonating = phase === "resonance" || phase === "pause";
@@ -264,7 +265,7 @@ export default function MinimalUI({
           width: "120px", height: "120px",
           marginLeft: "-60px", marginTop: "-60px",
           borderRadius: "50%",
-          border: `1.5px solid ${W}${(0.7 - i * 0.15).toFixed(2)})`,
+          border: `1.5px solid rgba(255,248,232,${(0.8 - i * 0.18).toFixed(2)})`,
           animation: `ring-pulse 1.6s ease-out ${i * 0.28}s forwards`,
           pointerEvents: "none", zIndex: 200,
         }} />
@@ -439,15 +440,17 @@ export default function MinimalUI({
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <div style={{
               width: "5px", height: "5px", borderRadius: "50%",
-              background: `${W}0.55)`,
-              animation: "breathe 3s ease-in-out infinite",
+              background: cameraActive ? "rgba(120,190,120,0.9)" : `${W}0.55)`,
+              boxShadow: cameraActive ? "0 0 5px rgba(120,190,120,0.6)" : "none",
+              animation: cameraActive ? "none" : "breathe 3s ease-in-out infinite",
+              transition: "background 0.6s ease, box-shadow 0.6s ease",
               flexShrink: 0,
             }} />
             <span style={{
               fontSize: "9px", letterSpacing: "0.14em",
               color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
             }}>
-              {t('cameraHint', lang)}
+              {cameraActive ? t('cameraOn', lang) : t('cameraHint', lang)}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -582,28 +585,50 @@ export default function MinimalUI({
         </div>
       </div>
 
-      {/* ── LANG TOGGLE DOT ──────────────────────────────────── */}
-      <div
-        onClick={onToggleLang}
-        title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
-        style={{
-          position: "fixed", bottom: "1.8rem", left: "1.8rem",
-          zIndex: 100, cursor: "pointer",
-          width: "36px", height: "36px", borderRadius: "50%",
-          background: "rgba(255,248,240,0.55)",
-          backdropFilter: "blur(10px)",
-          border: `0.5px solid ${W}0.2)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          userSelect: "none",
-          transition: "all 0.25s",
-        }}
-      >
-        <span style={{
-          fontSize: "9px", letterSpacing: "0.06em",
-          color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
-        }}>
-          {lang === 'zh' ? 'EN' : '中'}
-        </span>
+      {/* ── BOTTOM LEFT: back-to-free (guided) + lang toggle ─── */}
+      <div style={{
+        position: "fixed", bottom: "1.8rem", left: "1.8rem",
+        zIndex: 100, display: "flex", gap: "8px", alignItems: "center",
+      }}>
+        {/* Exit guided mode button — only shown in guided mode */}
+        {guidedMode && (
+          <div
+            onClick={onToggleGuidedMode}
+            title={lang === 'zh' ? '返回自由模式' : 'Back to free mode'}
+            style={{
+              width: "36px", height: "36px", borderRadius: "50%",
+              background: "rgba(255,248,240,0.55)",
+              backdropFilter: "blur(10px)",
+              border: `0.5px solid ${W}0.2)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", userSelect: "none", transition: "all 0.25s",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <polyline points="7,2 3,6 7,10" stroke={`${CR}0.6)`} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
+        {/* Lang toggle */}
+        <div
+          onClick={onToggleLang}
+          title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
+          style={{
+            width: "36px", height: "36px", borderRadius: "50%",
+            background: "rgba(255,248,240,0.55)",
+            backdropFilter: "blur(10px)",
+            border: `0.5px solid ${W}0.2)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", userSelect: "none", transition: "all 0.25s",
+          }}
+        >
+          <span style={{
+            fontSize: "9px", letterSpacing: "0.06em",
+            color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+          }}>
+            {lang === 'zh' ? 'EN' : '中'}
+          </span>
+        </div>
       </div>
       </div>
 
@@ -614,7 +639,7 @@ export default function MinimalUI({
           width: "120px", height: "120px",
           marginLeft: "-60px", marginTop: "-60px",
           borderRadius: "50%",
-          border: `${1.5 - i * 0.1}px solid ${W}${(0.8 - i * 0.08).toFixed(2)})`,
+          border: `${1.5 - i * 0.1}px solid rgba(255,248,232,${(0.85 - i * 0.08).toFixed(2)})`,
           animation: `completion-ring ${3.2 + i * 0.15}s ease-out ${i * 0.22}s forwards`,
           pointerEvents: "none", zIndex: 400,
         }} />

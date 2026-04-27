@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
-import { Preload } from "@react-three/drei";
-import ResonanceVortex from "./components/ResonanceVortex";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
 import CustomPanel from "./components/UI/CustomPanel";
+import FluidBackground from "./components/FluidBackground";
+import MeditationOverlay from "./components/MeditationOverlay";
 import { useSequence, STEPS } from "./hooks/useSequence";
 import { useAudio } from "./hooks/useAudio";
 import type { HeadRotation, CustomConfig } from "./types";
@@ -18,11 +17,12 @@ const DEFAULT_CONFIG: CustomConfig = {
   presets: [
     { label: "轻", angle: 13 },
     { label: "中", angle: 20 },
-    { label: "深", angle: 40 },
+    { label: "深", angle: 30 },
   ],
-  stepOrder: STEPS.map(s => s.id),
+  stepOrder: [2, 3, 0, 1, 4, 5],
   bgmEnabled: true,
   sfxEnabled: true,
+  voiceCuesEnabled: false,
 };
 
 function App() {
@@ -38,6 +38,7 @@ function App() {
   });
   const [showCustomPanel, setShowCustomPanel] = useState(false);
   const [lang, setLang] = useState<Lang>('zh');
+  const [cameraActive, setCameraActive] = useState(false);
 
   // Persist config changes to localStorage
   useEffect(() => {
@@ -52,24 +53,85 @@ function App() {
   const [completionPhase, setCompletionPhase] = useState<CompletionPhase>('idle');
   const faceTrackerRef = useRef<any>(null);
 
-  const { stepIndex, activeStep, phase, holdProgress, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
-    useSequence(headRotation, amplitudeScale, activeSteps);
+  const { stepIndex, activeStep, phase, holdProgress, inHoldZone, resonanceProgress, totalSteps, isCompleted, resetCompleted, resetAll } =
+    useSequence(headRotation, amplitudeScale, activeSteps, guidedMode);
 
-  const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
+  const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete, playCue } = useAudio();
 
   // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
   useEffect(() => {
     if (customConfig.bgmEnabled) startBGM();
     else stopBGM();
-  }, [customConfig.bgmEnabled]);
+    return () => stopBGM();
+  }, [customConfig.bgmEnabled, startBGM, stopBGM]);
+
+  // Voice cue — fires when a new step starts in guided mode
+  useEffect(() => {
+    if (!guidedMode || !customConfig.voiceCuesEnabled || phase !== "guide" || isCompleted) return;
+    playCue(activeStep.id, lang, 2);
+  }, [stepIndex, guidedMode]);
+
+  // Voice cue — fires when movement reaches 40% of target in guide phase; repeats after 4s if still not in hold
+  const movementCueFiredRef = useRef(false);
+  const movementRepeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!guidedMode || !customConfig.voiceCuesEnabled || isCompleted) return;
+    if (phase !== "guide") {
+      movementCueFiredRef.current = false;
+      if (movementRepeatTimerRef.current) { clearTimeout(movementRepeatTimerRef.current); movementRepeatTimerRef.current = null; }
+      return;
+    }
+    if (movementCueFiredRef.current) return;
+    const value = Math.abs(headRotation[activeStep.axis as keyof typeof headRotation]);
+    const threshold = Math.abs(activeStep.target) * 0.4;
+    if (value >= threshold && threshold > 2) {
+      movementCueFiredRef.current = true;
+      playCue(-2, lang, 0);
+      movementRepeatTimerRef.current = setTimeout(() => {
+        movementRepeatTimerRef.current = null;
+        movementCueFiredRef.current = false; // allow re-fire so it can repeat again if still not in hold
+      }, 4000);
+    }
+  }, [headRotation, phase, guidedMode]);
+
+  // Voice cue — "慢慢来" after 3s out of hold zone, then "保持" on return
+  const leftZoneAtRef = useRef<number | null>(null);
+  const returnCueFiredRef = useRef(false);
+  const returnCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!guidedMode || !customConfig.voiceCuesEnabled || phase !== "hold" || isCompleted) {
+      leftZoneAtRef.current = null;
+      returnCueFiredRef.current = false;
+      if (returnCueTimerRef.current) { clearTimeout(returnCueTimerRef.current); returnCueTimerRef.current = null; }
+      return;
+    }
+    if (!inHoldZone) {
+      if (leftZoneAtRef.current === null) {
+        leftZoneAtRef.current = Date.now();
+        returnCueFiredRef.current = false;
+        returnCueTimerRef.current = setTimeout(() => {
+          playCue(-2, lang, 0);
+          returnCueFiredRef.current = true;
+        }, 2000);
+      }
+    } else {
+      if (returnCueTimerRef.current) { clearTimeout(returnCueTimerRef.current); returnCueTimerRef.current = null; }
+      if (returnCueFiredRef.current) {
+        playCue(-1, lang, 1);
+      }
+      leftZoneAtRef.current = null;
+      returnCueFiredRef.current = false;
+    }
+  }, [inHoldZone, phase, guidedMode]);
 
   // Phase 转换音效
   const prevPhaseRef = useRef<string>("guide");
   useEffect(() => {
-    if (!guidedMode) { prevPhaseRef.current = phase; return; }
+    if (!guidedMode || isCompleted) { prevPhaseRef.current = phase; return; }
     const prev = prevPhaseRef.current;
     if (phase === "hold" && prev === "guide") {
       if (customConfig.sfxEnabled) startCrescendo();
+      if (customConfig.voiceCuesEnabled) playCue(-1, lang);
     } else if (phase === "resonance" && prev === "hold") {
       stopCrescendo();
       if (customConfig.sfxEnabled) playStepComplete();
@@ -79,35 +141,18 @@ function App() {
     prevPhaseRef.current = phase;
   }, [phase, guidedMode]);
 
-  // 渐强音随 holdProgress 实时更新
+  // 渐强音随 holdProgress 实时更新；离开区域时静音，回来时恢复
   useEffect(() => {
-    if (phase === "hold" && guidedMode && customConfig.sfxEnabled) updateCrescendo(holdProgress);
-  }, [holdProgress, phase, guidedMode]);
+    if (phase === "hold" && guidedMode && customConfig.sfxEnabled)
+      updateCrescendo(inHoldZone ? holdProgress : 0);
+  }, [holdProgress, inHoldZone, phase, guidedMode]);
 
-  // In guided mode: curves react to proximity before hold, then hold progress
-  // In free mode: curves react to total head deviation
-  const alignmentProgress = (() => {
-    if (!guidedMode) {
-      const mag = Math.sqrt(headRotation.yaw ** 2 + headRotation.pitch ** 2 + headRotation.roll ** 2);
-      return Math.min(1, mag / 35);
-    }
-    if (phase === "resonance" || phase === "pause") return 1;
-    if (phase === "hold") return 0.3 + holdProgress * 0.7;
-    // guide phase: how far along toward the target line (0 at start, 1 at line)
-    const current = headRotation[activeStep.axis];
-    const tgt = activeStep.target;
-    const progress = tgt > 0
-      ? Math.max(0, Math.min(1, current / tgt))
-      : Math.max(0, Math.min(1, current / tgt));
-    return progress * 0.5;
-  })();
-
-  const isFormed = phase === "resonance" || phase === "pause";
 
   useEffect(() => {
     if (!isCompleted) return;
     stopCrescendo();
     if (customConfig.sfxEnabled) playSessionComplete();
+    if (customConfig.voiceCuesEnabled) setTimeout(() => playCue(-3, lang, 2), 800);
     setCompletionPhase('ripple');
     const t1 = setTimeout(() => setCompletionPhase('clearing'), 1600);
     const t2 = setTimeout(() => {
@@ -125,30 +170,18 @@ function App() {
     };
   }, []);
 
+  const meditationProgress =
+    phase === "resonance" || phase === "pause" ? 1
+    : phase === "hold" ? holdProgress
+    : 0;
+
   return (
     <div className="app-container">
-      <Canvas
-        camera={{ position: [0, 0, 6], fov: 50, near: 0.1, far: 100 }}
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-        dpr={[1, 2]}
-        style={{ background: "#f5ede4" }}
-      >
-        {/* @ts-ignore */}
-        <color attach="background" args={["#f5ede4"]} />
-        {/* @ts-ignore */}
-        <ambientLight intensity={0.2} />
-        {/* @ts-ignore */}
-        <pointLight position={[0, 0, 4]} intensity={0.5} color="#C4785C" />
+      <FluidBackground
+        headOffset={!guidedMode ? { x: headRotation.yaw / 20, y: -headRotation.pitch / 20 } : undefined}
+      />
 
-        <ResonanceVortex
-          alignmentProgress={alignmentProgress}
-          isFormed={isFormed}
-          onFormed={() => {}}
-          headRotation={headRotation}
-        />
-
-        <Preload all />
-      </Canvas>
+      <MeditationOverlay progress={meditationProgress} />
 
       <MinimalUI
         activeStep={activeStep}
@@ -159,7 +192,10 @@ function App() {
         totalSteps={totalSteps}
         headRotation={headRotation}
         guidedMode={guidedMode}
-        onToggleGuidedMode={() => setGuidedMode((v) => !v)}
+        onToggleGuidedMode={() => {
+          if (guidedMode) resetAll();
+          setGuidedMode((v) => !v);
+        }}
         activePresetIdx={activePresetIdx}
         onPresetChange={setActivePresetIdx}
         customConfig={customConfig}
@@ -167,6 +203,7 @@ function App() {
         completionPhase={completionPhase}
         lang={lang}
         onToggleLang={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
+        cameraActive={cameraActive}
       />
 
       {showCustomPanel && (
@@ -229,6 +266,7 @@ function App() {
       <FaceTracker
         ref={faceTrackerRef}
         onHeadRotationChange={setHeadRotation}
+        onCameraActive={() => setCameraActive(true)}
       />
     </div>
   );

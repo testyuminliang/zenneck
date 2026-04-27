@@ -3,35 +3,37 @@ import type { StepDef, StepPhase, HeadRotation } from "../types";
 
 // Base targets at 1× scale. Amplitude presets: 轻 0.65× → ~13°, 中 1.0× → 20°, 大 2.0× → 40°
 export const STEPS: StepDef[] = [
-  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 6000, label: "向右侧倾", cue: "tilt right",   arrowDir: "right"       },
-  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 6000, label: "向左侧倾", cue: "tilt left",    arrowDir: "left"        },
-  { id: 2, axis: "pitch", target: -33, tolerance: 6, holdMs: 6000, label: "抬头仰望", cue: "look up",      arrowDir: "up"          },
-  { id: 3, axis: "pitch", target:  33, tolerance: 6, holdMs: 6000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
-  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 6000, label: "向右转头", cue: "turn right",   arrowDir: "right"       },
-  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 6000, label: "向左转头", cue: "turn left",    arrowDir: "left"        },
-  { id: 6, axis: "yaw",   target:  25, tolerance: 5, holdMs: 6000, label: "右上方转头", cue: "look up-right",   arrowDir: "up-right",   axis2: "pitch", target2: -20 },
-  { id: 7, axis: "yaw",   target: -25, tolerance: 5, holdMs: 6000, label: "左上方转头", cue: "look up-left",    arrowDir: "up-left",    axis2: "pitch", target2: -20 },
-  { id: 8, axis: "yaw",   target:  25, tolerance: 5, holdMs: 6000, label: "右下方转头", cue: "look down-right", arrowDir: "down-right", axis2: "pitch", target2:  20 },
-  { id: 9, axis: "yaw",   target: -25, tolerance: 5, holdMs: 6000, label: "左下方转头", cue: "look down-left",  arrowDir: "down-left",  axis2: "pitch", target2:  20 },
+  { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 9000, label: "向右侧倾", cue: "tilt right",   arrowDir: "right"       },
+  { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 9000, label: "向左侧倾", cue: "tilt left",    arrowDir: "left"        },
+  { id: 2, axis: "pitch", target: -20, tolerance: 5, holdMs: 9000, label: "抬头仰望", cue: "look up",      arrowDir: "up"          },
+  { id: 3, axis: "pitch", target:  20, tolerance: 5, holdMs: 9000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
+  { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 9000, label: "向右转头", cue: "turn right",   arrowDir: "right"       },
+  { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 9000, label: "向左转头", cue: "turn left",    arrowDir: "left"        },
+  { id: 6, axis: "yaw",   target:  25, tolerance: 5, holdMs: 9000, label: "右上方转头", cue: "look up-right",   arrowDir: "up-right",   axis2: "pitch", target2: -20 },
+  { id: 7, axis: "yaw",   target: -25, tolerance: 5, holdMs: 9000, label: "左上方转头", cue: "look up-left",    arrowDir: "up-left",    axis2: "pitch", target2: -20 },
+  { id: 8, axis: "yaw",   target:  25, tolerance: 5, holdMs: 9000, label: "右下方转头", cue: "look down-right", arrowDir: "down-right", axis2: "pitch", target2:  20 },
+  { id: 9, axis: "yaw",   target: -25, tolerance: 5, holdMs: 9000, label: "左下方转头", cue: "look down-left",  arrowDir: "down-left",  axis2: "pitch", target2:  20 },
 ];
 
 const RESONANCE_MS = 1800;
 const PAUSE_MS     = 600;  // brief pause between steps
-const GRACE_MS = 600; // ms before resetting when user drifts out of zone
 
-export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, steps = STEPS) {
+export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, steps = STEPS, enabled = true) {
   const rotRef = useRef(headRotation);
   rotRef.current = headRotation;
   const scaleRef = useRef(amplitudeScale);
   scaleRef.current = amplitudeScale;
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<StepPhase>("guide");
   const [holdProgress, setHoldProgress] = useState(0);
   const [resonanceProgress, setResonanceProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [inHoldZone, setInHoldZone] = useState(false);
 
   // Mutable refs — used inside rAF loop without re-creating the loop
   const phaseRef = useRef<StepPhase>("guide");
@@ -39,7 +41,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
   const holdStartRef = useRef<number | null>(null);
   const resonanceStartRef = useRef<number | null>(null);
   const pauseStartRef = useRef<number | null>(null);
-  const lostZoneAtRef = useRef<number | null>(null);
+  const holdAccumRef = useRef(0);   // ms accumulated in zone so far this step
   const holdProgressRef = useRef(0);
   const rafRef = useRef<number>(0);
 
@@ -50,6 +52,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
 
   useEffect(() => {
     const tick = (now: number) => {
+      if (!enabledRef.current) { rafRef.current = requestAnimationFrame(tick); return; }
       const step = stepsRef.current[stepIndexRef.current];
       const rot = rotRef.current;
       const value = rot[step.axis];
@@ -67,30 +70,30 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
 
       if (ph === "guide" || ph === "hold") {
         if (inZone) {
-          lostZoneAtRef.current = null;
+          setInHoldZone(true);
           if (!holdStartRef.current) {
             holdStartRef.current = now;
             syncPhase("hold");
           }
-          const hp = Math.min(1, (now - holdStartRef.current) / step.holdMs);
+          const elapsed = holdAccumRef.current + (now - holdStartRef.current);
+          const hp = Math.min(1, elapsed / step.holdMs);
           holdProgressRef.current = hp;
           setHoldProgress(hp);
 
           if (hp >= 1) {
-            resonanceStartRef.current = now;
+            holdAccumRef.current = 0;
+            holdStartRef.current = null;
             holdProgressRef.current = 0;
+            setInHoldZone(false);
+            resonanceStartRef.current = now;
             syncPhase("resonance");
           }
-        } else if (ph === "hold" ) {
-          // Grace window — don't reset immediately
-          if (!lostZoneAtRef.current) {
-            lostZoneAtRef.current = now;
-          } else if (now - lostZoneAtRef.current > GRACE_MS) {
+        } else if (ph === "hold") {
+          // Left zone — freeze accumulated time, stay in hold phase
+          setInHoldZone(false);
+          if (holdStartRef.current !== null) {
+            holdAccumRef.current += now - holdStartRef.current;
             holdStartRef.current = null;
-            lostZoneAtRef.current = null;
-            holdProgressRef.current = 0;
-            setHoldProgress(0);
-            syncPhase("guide");
           }
         }
       } else if (ph === "resonance") {
@@ -107,9 +110,9 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
           const next = isLast ? 0 : stepIndexRef.current + 1;
           stepIndexRef.current = next;
           holdStartRef.current = null;
+          holdAccumRef.current = 0;
           resonanceStartRef.current = null;
           pauseStartRef.current = null;
-          lostZoneAtRef.current = null;
           holdProgressRef.current = 0;
           setStepIndex(next);
           setHoldProgress(0);
@@ -134,14 +137,31 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
     ...(rawStep.target2 !== undefined ? { target2: rawStep.target2 * amplitudeScale } : {}),
   };
 
+  const resetAll = () => {
+    stepIndexRef.current = 0;
+    holdStartRef.current = null;
+    holdAccumRef.current = 0;
+    resonanceStartRef.current = null;
+    pauseStartRef.current = null;
+    holdProgressRef.current = 0;
+    setStepIndex(0);
+    setHoldProgress(0);
+    setResonanceProgress(0);
+    setInHoldZone(false);
+    setIsCompleted(false);
+    syncPhase("guide");
+  };
+
   return {
     stepIndex,
     activeStep,
     phase,
     holdProgress,
+    inHoldZone,
     resonanceProgress,
     totalSteps: steps.length,
     isCompleted,
     resetCompleted: () => { setIsCompleted(false); syncPhase("guide"); },
+    resetAll,
   };
 }

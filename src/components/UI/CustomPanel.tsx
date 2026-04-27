@@ -6,7 +6,7 @@ const W  = "rgba(180,95,65,";
 const CR = "rgba(100,60,40,";
 
 const BASE_ANGLE = 20;
-const DEFAULT_ANGLES = [13, 20, 40];
+const DEFAULT_ANGLES = [13, 20, 30];
 
 interface Props {
   config: CustomConfig;
@@ -200,10 +200,10 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
 
         {/* ── Section 0: Audio toggles ── */}
         <div style={{ padding: "12px 16px 10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          {/* BGM / SFX toggles */}
+          {/* BGM / SFX / Voice toggles */}
           <div style={{ display: "flex", gap: "8px" }}>
-            {(["bgmEnabled", "sfxEnabled"] as const).map((key) => {
-              const label = key === "bgmEnabled" ? t('bgm', lang) : t('sfx', lang);
+            {(["bgmEnabled", "sfxEnabled", "voiceCuesEnabled"] as const).map((key) => {
+              const label = key === "bgmEnabled" ? t('bgm', lang) : key === "sfxEnabled" ? t('sfx', lang) : t('voiceCues', lang);
               const on = config[key];
               return (
                 <div
@@ -218,7 +218,10 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                   }}
                 >
                   <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
-                    {key === "bgmEnabled" ? (
+                    {key === "voiceCuesEnabled" ? (
+                      <path d="M2 4h1.5l2-2.5v7L3.5 6H2a.5.5 0 01-.5-.5v-1A.5.5 0 012 4zM7.5 3.5a3 3 0 010 4M9 2a5 5 0 010 7"
+                        fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+                    ) : key === "bgmEnabled" ? (
                       <>
                         <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                         <circle cx="3.5" cy="8.8" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
@@ -231,7 +234,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                         <path d="M6.5 9.5 V1.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
                         <path d="M9 8 V3" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
                       </>
-                    )}
+                    ) }
                   </svg>
                   <span style={{
                     fontSize: "10px", letterSpacing: "0.06em",

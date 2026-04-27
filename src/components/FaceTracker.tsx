@@ -5,10 +5,11 @@ import type { HeadRotation } from "../types";
 
 interface FaceTrackerProps {
   onHeadRotationChange: (rotation: HeadRotation) => void;
+  onCameraActive?: () => void;
 }
 
 const FaceTracker = forwardRef<any, FaceTrackerProps>(
-  ({ onHeadRotationChange }, ref) => {
+  ({ onHeadRotationChange, onCameraActive }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
     const animationIdRef = useRef<number | null>(null);
@@ -52,6 +53,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             videoRef.current.onloadedmetadata = () => {
               videoRef.current?.play();
               isInitializedRef.current = true;
+              onCameraActive?.();
               trackFace();
             };
           }
@@ -111,6 +113,16 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
             smoothedPitchRef.current = THREE.MathUtils.lerp(smoothedPitchRef.current, pitch, 0.4);
             smoothedYawRef.current   = THREE.MathUtils.lerp(smoothedYawRef.current,   yaw,   0.4);
 
+            onHeadRotationChange({
+              roll:  smoothedRollRef.current,
+              pitch: smoothedPitchRef.current,
+              yaw:   smoothedYawRef.current,
+            });
+          } else {
+            // 没有检测到人脸 — 平滑归零，避免数值冻结在最后位置
+            smoothedRollRef.current  = THREE.MathUtils.lerp(smoothedRollRef.current,  0, 0.15);
+            smoothedPitchRef.current = THREE.MathUtils.lerp(smoothedPitchRef.current, 0, 0.15);
+            smoothedYawRef.current   = THREE.MathUtils.lerp(smoothedYawRef.current,   0, 0.15);
             onHeadRotationChange({
               roll:  smoothedRollRef.current,
               pitch: smoothedPitchRef.current,
