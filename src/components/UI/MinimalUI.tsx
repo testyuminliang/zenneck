@@ -21,10 +21,11 @@ interface Props {
   lang: Lang;
   onToggleLang: () => void;
   cameraActive: boolean;
+  cameraFailed: boolean;
 }
 
 // ── Hold ring geometry ────────────────────────────────────────────────
-const R = 52;
+const R = 70;
 const CIRC = 2 * Math.PI * R;
 
 // ── Direction arrow (SVG, inside guide circle) ────────────────────────
@@ -164,7 +165,7 @@ export default function MinimalUI({
   stepIndex, totalSteps, headRotation,
   guidedMode, onToggleGuidedMode,
   activePresetIdx, onPresetChange, customConfig, onCustomOpen,
-  completionPhase, lang, onToggleLang, cameraActive,
+  completionPhase, lang, onToggleLang, cameraActive, cameraFailed,
 }: Props) {
   const { W, CR } = getTheme(customConfig.themeKey);
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
@@ -272,8 +273,8 @@ export default function MinimalUI({
         onClick={!guidedMode ? onToggleGuidedMode : undefined}
         style={{
           position: "fixed", top: "50%", left: "50%",
-          width: "120px", height: "120px",
-          marginLeft: "-60px", marginTop: "-60px",
+          width: "160px", height: "160px",
+          marginLeft: "-80px", marginTop: "-80px",
           zIndex: 100,
           cursor: !guidedMode ? "pointer" : "default",
           pointerEvents: "auto",
@@ -283,11 +284,11 @@ export default function MinimalUI({
       >
 
           {/* SVG: track + hold fill ring (guided only) */}
-          <svg width="120" height="120" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-            <circle cx="60" cy="60" r={R} fill="none" stroke={`${W}0.1)`} strokeWidth="1.5" />
+          <svg width="160" height="160" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+            <circle cx="80" cy="80" r={R} fill="none" stroke={`${W}0.1)`} strokeWidth="1.5" />
             {guidedMode && (
               <circle
-                cx="60" cy="60" r={R} fill="none"
+                cx="80" cy="80" r={R} fill="none"
                 stroke={isResonating ? `${W}0.9)` : inZone ? `${W}0.65)` : `${W}0.18)`}
                 strokeWidth={isResonating ? "2.5" : inZone ? "2" : "1"}
                 strokeDasharray={`${CIRC * holdProgress} ${CIRC}`}
@@ -300,8 +301,8 @@ export default function MinimalUI({
           {/* Resonance scale ring (expands) */}
           <div style={{
             position: "absolute", top: "50%", left: "50%",
-            width: "96px", height: "96px",
-            marginLeft: "-48px", marginTop: "-48px",
+            width: "128px", height: "128px",
+            marginLeft: "-64px", marginTop: "-64px",
             borderRadius: "50%",
             border: `1px solid ${W}${ringOpacity.toFixed(2)})`,
             transform: `scale(${isResonating ? ringScale : 1})`,
@@ -312,7 +313,7 @@ export default function MinimalUI({
 
           {/* Inner frosted disc */}
           <div style={{
-            position: "absolute", inset: "12px", borderRadius: "50%",
+            position: "absolute", inset: "16px", borderRadius: "50%",
             background: inZone
               ? `rgba(255,240,228,${0.45 + holdProgress * 0.3})`
               : "rgba(255,248,240,0.28)",
@@ -330,7 +331,7 @@ export default function MinimalUI({
               pointerEvents: "none",
             }}>
               <span style={{
-                fontSize: "13px", letterSpacing: "0.28em",
+                fontSize: "18px", letterSpacing: "0.28em",
                 fontFamily: "'DM Serif Display', serif",
                 fontStyle: "italic",
                 color: `${CR}0.75)`,
@@ -339,8 +340,8 @@ export default function MinimalUI({
               }}>{t('start', lang)}</span>
               {lang === 'zh' && (
                 <span style={{
-                  fontSize: "7px", letterSpacing: "0.3em",
-                  color: `${CR}0.35)`,
+                  fontSize: "9px", letterSpacing: "0.3em",
+                  color: `${CR}0.4)`,
                   fontFamily: "monospace",
                   animation: "text-echo 3.6s ease-in-out infinite 0.4s",
                   userSelect: "none",
@@ -391,7 +392,7 @@ export default function MinimalUI({
         <div style={{
           position: "fixed", top: "50%", left: "50%",
           transform: "translateX(-50%)",
-          marginTop: "82px",
+          marginTop: "102px",
           zIndex: 100, pointerEvents: "none",
           textAlign: "center",
           display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
@@ -430,34 +431,41 @@ export default function MinimalUI({
         <div style={{
           position: "fixed", top: "52px", left: "50%",
           transform: "translateX(-50%)",
-          zIndex: 100, pointerEvents: "none",
+          zIndex: 100, pointerEvents: cameraFailed && !cameraActive ? "auto" : "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div
+            onClick={cameraFailed && !cameraActive ? () => window.location.reload() : undefined}
+            style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              cursor: cameraFailed && !cameraActive ? "pointer" : "default",
+            }}
+          >
             <div style={{
-              width: "5px", height: "5px", borderRadius: "50%",
-              background: cameraActive ? "rgba(120,190,120,0.9)" : `${W}0.55)`,
-              boxShadow: cameraActive ? "0 0 5px rgba(120,190,120,0.6)" : "none",
+              width: "7px", height: "7px", borderRadius: "50%",
+              background: cameraActive ? "rgba(120,190,120,0.9)" : cameraFailed ? "rgba(220,120,100,0.85)" : `${W}0.65)`,
+              boxShadow: cameraActive ? "0 0 6px rgba(120,190,120,0.6)" : cameraFailed ? "0 0 6px rgba(220,120,100,0.5)" : `0 0 4px ${W}0.3)`,
               animation: cameraActive ? "none" : "breathe 3s ease-in-out infinite",
               transition: "background 0.6s ease, box-shadow 0.6s ease",
               flexShrink: 0,
             }} />
             <span style={{
-              fontSize: "9px", letterSpacing: "0.14em",
-              color: `${CR}0.5)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+              fontSize: "13px", letterSpacing: "0.1em",
+              color: cameraFailed && !cameraActive ? "rgba(220,120,100,0.85)" : `${CR}0.78)`,
+              fontFamily: "'DM Sans',sans-serif", fontWeight: 500,
             }}>
-              {cameraActive ? t('cameraOn', lang) : t('cameraHint', lang)}
+              {cameraActive ? t('cameraOn', lang) : cameraFailed ? t('cameraFailed', lang) : t('cameraHint', lang)}
             </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <svg width="9" height="9" viewBox="0 0 11 11" style={{ flexShrink: 0, opacity: 0.45 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <svg width="12" height="12" viewBox="0 0 11 11" style={{ flexShrink: 0, opacity: 0.6 }}>
               <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${W}1)`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
               <circle cx="3.5" cy="8.8" r="1.1" fill={`${W}1)`} />
               <circle cx="8.5" cy="7.3" r="1.1" fill={`${W}1)`} />
             </svg>
             <span style={{
-              fontSize: "9px", letterSpacing: "0.14em",
-              color: `${CR}0.4)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300,
+              fontSize: "13px", letterSpacing: "0.1em",
+              color: `${CR}0.68)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 500,
               animation: "breathe 4s ease-in-out infinite 1s",
             }}>
               {t('musicTip', lang)}
@@ -541,7 +549,7 @@ export default function MinimalUI({
               key={idx}
               onClick={() => onPresetChange(idx)}
               style={{
-                width: "40px", height: "40px", borderRadius: "8px",
+                minWidth: "48px", height: "48px", borderRadius: "10px", padding: "0 6px",
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", gap: "1px",
                 cursor: "pointer",
@@ -551,8 +559,8 @@ export default function MinimalUI({
                 userSelect: "none",
               }}
             >
-              <span style={{ fontSize: "10px", letterSpacing: "0.05em", fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.55)` }}>{presetLabel(preset.label, lang)}</span>
-              <span style={{ fontSize: "7px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.3)` }}>{preset.angle}°</span>
+              <span style={{ fontSize: "13px", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "'DM Sans',sans-serif", color: active ? "rgba(255,248,240,0.95)" : `${CR}0.7)` }}>{presetLabel(preset.label, lang)}</span>
+              <span style={{ fontSize: "8px", letterSpacing: "0.04em", fontFamily: "monospace", color: active ? "rgba(255,248,240,0.7)" : `${CR}0.4)` }}>{preset.angle}°</span>
             </div>
           );
         })}
@@ -561,7 +569,7 @@ export default function MinimalUI({
           onClick={onCustomOpen}
           title={t('custom', lang)}
           style={{
-            width: "40px", height: "40px", borderRadius: "8px",
+            minWidth: "48px", height: "48px", borderRadius: "10px",
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
             background: "rgba(255,248,240,0.5)",

@@ -40,6 +40,7 @@ function App() {
   const [showCustomPanel, setShowCustomPanel] = useState(false);
   const [lang, setLang] = useState<Lang>('zh');
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraFailed, setCameraFailed] = useState(false);
 
   // Persist config changes to localStorage
   useEffect(() => {
@@ -213,6 +214,7 @@ function App() {
         lang={lang}
         onToggleLang={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
         cameraActive={cameraActive}
+        cameraFailed={cameraFailed}
       />
 
       {showCustomPanel && (
@@ -276,6 +278,7 @@ function App() {
         ref={faceTrackerRef}
         onHeadRotationChange={setHeadRotation}
         onCameraActive={() => setCameraActive(true)}
+        onCameraFailed={() => setCameraFailed(true)}
       />
     </div>
   );

@@ -6,10 +6,11 @@ import type { HeadRotation } from "../types";
 interface FaceTrackerProps {
   onHeadRotationChange: (rotation: HeadRotation) => void;
   onCameraActive?: () => void;
+  onCameraFailed?: () => void;
 }
 
 const FaceTracker = forwardRef<any, FaceTrackerProps>(
-  ({ onHeadRotationChange, onCameraActive }, ref) => {
+  ({ onHeadRotationChange, onCameraActive, onCameraFailed }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
     const animationIdRef = useRef<number | null>(null);
@@ -59,6 +60,7 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
           }
         } catch (error) {
           console.error("Face tracking init error:", error);
+          onCameraFailed?.();
         }
       };
 

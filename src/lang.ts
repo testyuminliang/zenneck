@@ -7,6 +7,7 @@ export const UI = {
   tapToStart:      { zh: '点击圆圈开始引导练习', en: 'Tap circle to start' },
   cameraHint:      { zh: '请确保摄像头权限已开启', en: 'Allow camera access' },
   cameraOn:        { zh: '摄像头已开启',          en: 'Camera active'       },
+  cameraFailed:    { zh: '摄像头未开启？点击刷新页面重试', en: 'Camera failed? Tap to refresh' },
   sessionComplete: { zh: '练习完成',         en: 'Session Complete'    },
   bgm:             { zh: '背景音乐',         en: 'Music'               },
   sfx:             { zh: '音效',            en: 'SFX'                 },
