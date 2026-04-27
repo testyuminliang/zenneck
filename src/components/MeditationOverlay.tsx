@@ -50,9 +50,9 @@ function HoldShrinkRing({ progress }: { progress: number }) {
   const size = R * 2 + 12;
   return (
     <svg width={size} height={size} style={{
-      position: "absolute", top: "50%", left: "50%",
+      position: "fixed", top: "50%", left: "50%",
       transform: "translate(-50%,-50%)",
-      pointerEvents: "none",
+      pointerEvents: "none", zIndex: 2,
       opacity: vis ? 1 : 0,
       transition: "opacity .5s",
     }}>
@@ -74,16 +74,20 @@ function HoldArc({ progress, size = 230, color = "#fff2d8" }: { progress: number
   const ang = -Math.PI / 2 + p * Math.PI * 2;
   const hx = size / 2 + Math.cos(ang) * R;
   const hy = size / 2 + Math.sin(ang) * R;
+  // 渐变从尾部起点指向彗头，跟着弧线走向
+  const tailAng = ang - (tailLen / R);
+  const tx = size / 2 + Math.cos(tailAng) * R;
+  const ty = size / 2 + Math.sin(tailAng) * R;
   return (
     <svg width={size} height={size} style={{
-      position: "absolute", top: "50%", left: "50%",
+      position: "fixed", top: "50%", left: "50%",
       transform: "translate(-50%,-50%)",
-      pointerEvents: "none",
+      pointerEvents: "none", zIndex: 2,
       opacity: vis ? 1 : 0,
       transition: "opacity .5s",
     }}>
       <defs>
-        <linearGradient id="meteorGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2={size}>
+        <linearGradient id="meteorGrad" gradientUnits="userSpaceOnUse" x1={tx} y1={ty} x2={hx} y2={hy}>
           <stop offset="0%" stopColor={color} stopOpacity="0" />
           <stop offset="60%" stopColor={color} stopOpacity="0.45" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
@@ -104,8 +108,6 @@ function HoldArc({ progress, size = 230, color = "#fff2d8" }: { progress: number
           strokeDashoffset={-(headPos - tailLen)} />
       </g>
       <circle cx={hx} cy={hy} r="10" fill="url(#meteorHead)" />
-      <circle cx={hx} cy={hy} r="2.4" fill="#ffffff"
-        style={{ filter: "drop-shadow(0 0 6px rgba(255,245,220,1))" }} />
     </svg>
   );
 }
@@ -119,12 +121,14 @@ interface BloomSeed {
   tanA: number; tanF: number; col: string;
 }
 
-function CondenseBloom({ progress }: { progress: number }) {
+function CondenseBloom({ progress, arcProgress }: { progress: number; arcProgress: number }) {
   const pRef = useRef(progress);
   useEffect(() => { pRef.current = progress; }, [progress]);
+  const arcRef = useRef(arcProgress);
+  useEffect(() => { arcRef.current = arcProgress; }, [arcProgress]);
 
   const seedsRef = useRef<BloomSeed[] | null>(null);
-  if (!seedsRef.current) {
+  if (seedsRef.current == null) {
     const N = PALETTE.length * 2;
     seedsRef.current = Array.from({ length: N }, (_, i) => ({
       baseAng: (i / N) * Math.PI * 2 + i * 0.17,
@@ -205,6 +209,29 @@ function CondenseBloom({ progress }: { progress: number }) {
       }
       ctx.restore();
     }
+
+    // 白点画在最后，永远在最上层
+    const ap = arcRef.current;
+    if (ap > 0.02 && ap < 0.95) {
+      const arcSize = 230;
+      const arcR = (arcSize - 1.4) / 2;
+      const arcAng = -Math.PI / 2 + ap * Math.PI * 2;
+      const dx = cx + Math.cos(arcAng) * arcR;
+      const dy = cy + Math.sin(arcAng) * arcR;
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      const glow = ctx.createRadialGradient(dx, dy, 0, dx, dy, 10);
+      glow.addColorStop(0, "rgba(255,255,255,1)");
+      glow.addColorStop(0.4, "rgba(255,242,220,0.85)");
+      glow.addColorStop(1, "rgba(255,242,220,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(dx, dy, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(255,245,220,1)";
+      ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(dx, dy, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
   }, []);
 
   return (
@@ -226,7 +253,7 @@ export default function MeditationOverlay({ progress }: Props) {
   const showBloom = progress > 0.02;
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-      {showBloom && <CondenseBloom progress={progress} />}
+      {showBloom && <CondenseBloom progress={progress} arcProgress={showHold ? progress : 0} />}
       {showHold && <HoldShrinkRing progress={progress} />}
       {showHold && <HoldArc progress={progress} />}
     </div>
