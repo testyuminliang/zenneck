@@ -6,10 +6,11 @@ import type { HeadRotation } from "../types";
 interface FaceTrackerProps {
   onHeadRotationChange: (rotation: HeadRotation) => void;
   onCameraActive?: () => void;
+  onCameraFailed?: () => void;
 }
 
 const FaceTracker = forwardRef<any, FaceTrackerProps>(
-  ({ onHeadRotationChange, onCameraActive }, ref) => {
+  ({ onHeadRotationChange, onCameraActive, onCameraFailed }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
     const animationIdRef = useRef<number | null>(null);
@@ -21,9 +22,12 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
 
     useImperativeHandle(ref, () => ({
       stop: () => {
-        if (animationIdRef.current) cancelAnimationFrame(animationIdRef.current);
+        if (animationIdRef.current)
+          cancelAnimationFrame(animationIdRef.current);
         if (videoRef.current?.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+          (videoRef.current.srcObject as MediaStream)
+            .getTracks()
+            .forEach((t) => t.stop());
         }
       },
     }));
@@ -46,7 +50,11 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
           faceLandmarkerRef.current = landmarker;
 
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              facingMode: "user",
+            },
           });
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -59,11 +67,16 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
           }
         } catch (error) {
           console.error("Face tracking init error:", error);
+          onCameraFailed?.();
         }
       };
 
       const trackFace = () => {
-        if (!isInitializedRef.current || !faceLandmarkerRef.current || !videoRef.current) {
+        if (
+          !isInitializedRef.current ||
+          !faceLandmarkerRef.current ||
+          !videoRef.current
+        ) {
           animationIdRef.current = requestAnimationFrame(trackFace);
           return;
         }
@@ -77,10 +90,15 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
         lastDetectTimeRef.current = now;
 
         try {
-          const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, Date.now());
+          const results = faceLandmarkerRef.current.detectForVideo(
+            videoRef.current,
+            Date.now(),
+          );
 
           if (results.faceLandmarks?.length > 0) {
-            let roll = 0, pitch = 0, yaw = 0;
+            let roll = 0,
+              pitch = 0,
+              yaw = 0;
 
             // Use 3D face transformation matrix for accurate pitch/yaw/roll
             const matrices = (results as any).facialTransformationMatrixes;
@@ -90,43 +108,69 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
               const euler = new THREE.Euler().setFromRotationMatrix(m, "YXZ");
               const toDeg = 180 / Math.PI;
               // yaw negated for mirror flip; roll NOT negated (matrix already in camera space)
-              pitch =  euler.x * toDeg;
-              yaw   = -euler.y * toDeg;
-              roll  =  euler.z * toDeg;
+              pitch = euler.x * toDeg;
+              yaw = -euler.y * toDeg;
+              roll = euler.z * toDeg;
             } else {
               // Fallback: landmark-based (less reliable for pitch)
               const lm = results.faceLandmarks[0];
               if (lm.length >= 468) {
-                const leftEye  = lm[33];
+                const leftEye = lm[33];
                 const rightEye = lm[263];
-                const noseTip  = lm[1];
-                const chin     = lm[152];
-                roll  = -Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * (180 / Math.PI);
+                const noseTip = lm[1];
+                const chin = lm[152];
+                roll =
+                  -Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) *
+                  (180 / Math.PI);
                 const eyeMidY = (leftEye.y + rightEye.y) / 2;
-                const faceH   = chin.y - eyeMidY;
+                const faceH = chin.y - eyeMidY;
                 pitch = -((noseTip.y - eyeMidY) / faceH - 0.45) * 200;
-                yaw   = -(noseTip.x - (leftEye.x + rightEye.x) / 2) * 280;
+                yaw = -(noseTip.x - (leftEye.x + rightEye.x) / 2) * 280;
               }
             }
 
-            smoothedRollRef.current  = THREE.MathUtils.lerp(smoothedRollRef.current,  roll,  0.4);
-            smoothedPitchRef.current = THREE.MathUtils.lerp(smoothedPitchRef.current, pitch, 0.4);
-            smoothedYawRef.current   = THREE.MathUtils.lerp(smoothedYawRef.current,   yaw,   0.4);
+            smoothedRollRef.current = THREE.MathUtils.lerp(
+              smoothedRollRef.current,
+              roll,
+              0.4,
+            );
+            smoothedPitchRef.current = THREE.MathUtils.lerp(
+              smoothedPitchRef.current,
+              pitch,
+              0.4,
+            );
+            smoothedYawRef.current = THREE.MathUtils.lerp(
+              smoothedYawRef.current,
+              yaw,
+              0.4,
+            );
 
             onHeadRotationChange({
-              roll:  smoothedRollRef.current,
+              roll: smoothedRollRef.current,
               pitch: smoothedPitchRef.current,
-              yaw:   smoothedYawRef.current,
+              yaw: smoothedYawRef.current,
             });
           } else {
             // 没有检测到人脸 — 平滑归零，避免数值冻结在最后位置
-            smoothedRollRef.current  = THREE.MathUtils.lerp(smoothedRollRef.current,  0, 0.15);
-            smoothedPitchRef.current = THREE.MathUtils.lerp(smoothedPitchRef.current, 0, 0.15);
-            smoothedYawRef.current   = THREE.MathUtils.lerp(smoothedYawRef.current,   0, 0.15);
+            smoothedRollRef.current = THREE.MathUtils.lerp(
+              smoothedRollRef.current,
+              0,
+              0.15,
+            );
+            smoothedPitchRef.current = THREE.MathUtils.lerp(
+              smoothedPitchRef.current,
+              0,
+              0.15,
+            );
+            smoothedYawRef.current = THREE.MathUtils.lerp(
+              smoothedYawRef.current,
+              0,
+              0.15,
+            );
             onHeadRotationChange({
-              roll:  smoothedRollRef.current,
+              roll: smoothedRollRef.current,
               pitch: smoothedPitchRef.current,
-              yaw:   smoothedYawRef.current,
+              yaw: smoothedYawRef.current,
             });
           }
         } catch (e) {
@@ -137,10 +181,15 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
       };
 
       initFaceTracking();
-      return () => { if (animationIdRef.current) cancelAnimationFrame(animationIdRef.current); };
+      return () => {
+        if (animationIdRef.current)
+          cancelAnimationFrame(animationIdRef.current);
+      };
     }, [onHeadRotationChange]);
 
-    return <video ref={videoRef} style={{ display: "none" }} playsInline muted />;
+    return (
+      <video ref={videoRef} style={{ display: "none" }} playsInline muted />
+    );
   },
 );
 
