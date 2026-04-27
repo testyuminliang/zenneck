@@ -53,7 +53,7 @@ function App() {
   const faceTrackerRef = useRef<any>(null);
 
   const { stepIndex, activeStep, phase, holdProgress, inHoldZone, resonanceProgress, totalSteps, isCompleted, resetCompleted } =
-    useSequence(headRotation, amplitudeScale, activeSteps);
+    useSequence(headRotation, amplitudeScale, activeSteps, guidedMode);
 
   const { startBGM, stopBGM, loadCustomBgm, clearCustomBgm, startCrescendo, updateCrescendo, stopCrescendo, playStepComplete, playSessionComplete } = useAudio();
 
@@ -115,7 +115,9 @@ function App() {
 
   return (
     <div className="app-container">
-      <FluidBackground />
+      <FluidBackground
+        headOffset={!guidedMode ? { x: headRotation.yaw / 20, y: -headRotation.pitch / 20 } : undefined}
+      />
 
       <MeditationOverlay progress={meditationProgress} />
 

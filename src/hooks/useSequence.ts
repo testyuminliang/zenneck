@@ -18,13 +18,15 @@ export const STEPS: StepDef[] = [
 const RESONANCE_MS = 1800;
 const PAUSE_MS     = 600;  // brief pause between steps
 
-export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, steps = STEPS) {
+export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, steps = STEPS, enabled = true) {
   const rotRef = useRef(headRotation);
   rotRef.current = headRotation;
   const scaleRef = useRef(amplitudeScale);
   scaleRef.current = amplitudeScale;
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<StepPhase>("guide");
@@ -50,6 +52,7 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
 
   useEffect(() => {
     const tick = (now: number) => {
+      if (!enabledRef.current) { rafRef.current = requestAnimationFrame(tick); return; }
       const step = stepsRef.current[stepIndexRef.current];
       const rot = rotRef.current;
       const value = rot[step.axis];
