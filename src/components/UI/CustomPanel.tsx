@@ -1,9 +1,7 @@
 import type { CustomConfig, StepDef } from "../../types";
 import type { Lang } from "../../lang";
 import { t, presetLabel, stepLabel } from "../../lang";
-
-const W  = "rgba(180,95,65,";
-const CR = "rgba(100,60,40,";
+import { getTheme, THEMES, THEME_ORDER } from "../../themes";
 
 const BASE_ANGLE = 20;
 const DEFAULT_ANGLES = [13, 20, 30];
@@ -20,7 +18,7 @@ interface Props {
 
 function StepRow({
   step, enabled, canUp, canDown,
-  onToggle, onMoveUp, onMoveDown, lang,
+  onToggle, onMoveUp, onMoveDown, lang, W, CR,
 }: {
   step: StepDef; enabled: boolean;
   canUp: boolean; canDown: boolean;
@@ -28,6 +26,7 @@ function StepRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
   lang: Lang;
+  W: string; CR: string;
 }) {
   const axisColor = step.axis2
     ? `${W}0.55)` : step.axis === "roll"
@@ -109,6 +108,8 @@ function StepRow({
 }
 
 export default function CustomPanel({ config, allSteps, onChange, onClose, onUploadBgm, onClearBgm, lang }: Props) {
+  const { W, CR } = getTheme(config.themeKey);
+
   function setPresetAngle(idx: number, raw: string) {
     const v = parseInt(raw);
     if (isNaN(v)) return;
@@ -181,6 +182,31 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
         }}>
           CUSTOM
         </span>
+
+        {/* ── Theme swatches ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          {THEME_ORDER.map((key) => {
+            const active = (config.themeKey ?? "terracotta") === key;
+            return (
+              <div
+                key={key}
+                onClick={() => onChange({ ...config, themeKey: key })}
+                title={key}
+                style={{
+                  width: "13px", height: "13px", borderRadius: "50%",
+                  background: THEMES[key].swatch,
+                  cursor: "pointer",
+                  boxShadow: active
+                    ? `0 0 0 2px rgba(255,252,248,0.9), 0 0 0 3.5px ${THEMES[key].swatch}`
+                    : "none",
+                  transition: "box-shadow 0.2s",
+                  flexShrink: 0,
+                }}
+              />
+            );
+          })}
+        </div>
+
         <div
           onClick={onClose}
           style={{
@@ -317,7 +343,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
               }}>{presetLabel(preset.label, lang)}</span>
 
               {/* − button */}
-              <div onClick={() => nudgeAngle(idx, -1)} style={nudgeBtn}>
+              <div onClick={() => nudgeAngle(idx, -1)} style={nudgeBtn(CR)}>
                 <svg width="8" height="2" viewBox="0 0 8 2">
                   <line x1="1" y1="1" x2="7" y2="1" stroke={`${CR}0.55)`} strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
@@ -343,7 +369,7 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
               <span style={{ fontSize: "10px", color: `${CR}0.6)`, fontFamily: "monospace", marginLeft: "-6px" }}>°</span>
 
               {/* + button */}
-              <div onClick={() => nudgeAngle(idx, 1)} style={nudgeBtn}>
+              <div onClick={() => nudgeAngle(idx, 1)} style={nudgeBtn(CR)}>
                 <svg width="8" height="8" viewBox="0 0 8 8">
                   <line x1="4" y1="1" x2="4" y2="7" stroke={`${CR}0.55)`} strokeWidth="1.5" strokeLinecap="round" />
                   <line x1="1" y1="4" x2="7" y2="4" stroke={`${CR}0.55)`} strokeWidth="1.5" strokeLinecap="round" />
@@ -406,6 +432,8 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                 onMoveUp={() => moveStep(step.id, "up")}
                 onMoveDown={() => moveStep(step.id, "down")}
                 lang={lang}
+                W={W}
+                CR={CR}
               />
             );
           })}
@@ -415,10 +443,12 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
   );
 }
 
-const nudgeBtn: React.CSSProperties = {
-  width: "20px", height: "20px", borderRadius: "5px",
-  display: "flex", alignItems: "center", justifyContent: "center",
-  cursor: "pointer",
-  background: "rgba(100,60,40,0.06)",
-  flexShrink: 0,
-};
+function nudgeBtn(CR: string): React.CSSProperties {
+  return {
+    width: "20px", height: "20px", borderRadius: "5px",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer",
+    background: `${CR}0.06)`,
+    flexShrink: 0,
+  };
+}

@@ -1,6 +1,7 @@
 import type { StepDef, StepPhase, HeadRotation, CustomConfig } from "../../types";
 import type { Lang } from "../../lang";
 import { t, presetLabel, stepLabel } from "../../lang";
+import { getTheme } from "../../themes";
 
 interface Props {
   activeStep: StepDef;
@@ -22,10 +23,6 @@ interface Props {
   cameraActive: boolean;
 }
 
-// ── Palette ───────────────────────────────────────────────────────────
-const W  = "rgba(180,95,65,";   // warm terracotta
-const CR = "rgba(100,60,40,";   // cream-dark (text)
-
 // ── Hold ring geometry ────────────────────────────────────────────────
 const R = 52;
 const CIRC = 2 * Math.PI * R;
@@ -36,7 +33,7 @@ const ARROW_ROT: Record<StepDef["arrowDir"], number> = {
   down: 180, "down-left": 225, left: 270, "up-left": 315,
 };
 
-function Arrow({ dir, faded }: { dir: StepDef["arrowDir"]; faded: boolean }) {
+function Arrow({ dir, faded, W }: { dir: StepDef["arrowDir"]; faded: boolean; W: string }) {
   const op = faded ? 0.25 : 0.85;
   const rot = ARROW_ROT[dir];
   return (
@@ -50,16 +47,14 @@ function Arrow({ dir, faded }: { dir: StepDef["arrowDir"]; faded: boolean }) {
         transition: "opacity 0.4s",
       }}
     >
-      {/* shaft */}
-      <line x1="16" y1="24" x2="16" y2="10" stroke={`rgba(180,95,65,1)`} strokeWidth="2" strokeLinecap="round" />
-      {/* arrowhead */}
-      <polyline points="10,15 16,8 22,15" fill="none" stroke={`rgba(180,95,65,1)`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="16" y1="24" x2="16" y2="10" stroke={`${W}1)`} strokeWidth="2" strokeLinecap="round" />
+      <polyline points="10,15 16,8 22,15" fill="none" stroke={`${W}1)`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 // ── Tilt guide for roll steps (mini horizon dial) ─────────────────────
-function HorizonDial({ roll, targetRoll }: { roll: number; targetRoll: number; inZone: boolean }) {
+function HorizonDial({ roll, targetRoll, W, CR }: { roll: number; targetRoll: number; inZone: boolean; W: string; CR: string }) {
   const reached = targetRoll > 0 ? roll >= targetRoll : roll <= targetRoll;
   return (
     <div style={{
@@ -104,7 +99,7 @@ function HorizonDial({ roll, targetRoll }: { roll: number; targetRoll: number; i
 }
 
 // ── Pitch guide (horizontal bar translates up/down) ───────────────────
-function PitchDial({ pitch, targetPitch, offsetX = 0 }: { pitch: number; targetPitch: number; inZone: boolean; offsetX?: number }) {
+function PitchDial({ pitch, targetPitch, offsetX = 0, W, CR }: { pitch: number; targetPitch: number; inZone: boolean; offsetX?: number; W: string; CR: string }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
   const toY = (v: number) => clamp(v, 45) / 45 * 15;
   const liveY  = toY(pitch);
@@ -134,7 +129,7 @@ function PitchDial({ pitch, targetPitch, offsetX = 0 }: { pitch: number; targetP
 }
 
 // ── Yaw guide (vertical bar translates left/right) ────────────────────
-function YawDial({ yaw, targetYaw, offsetX = 0 }: { yaw: number; targetYaw: number; inZone: boolean; offsetX?: number }) {
+function YawDial({ yaw, targetYaw, offsetX = 0, W, CR }: { yaw: number; targetYaw: number; inZone: boolean; offsetX?: number; W: string; CR: string }) {
   const clamp = (v: number, max: number) => Math.max(-max, Math.min(max, v));
   const toX = (v: number) => clamp(v, 20) / 20 * 15;
   const liveX  = toX(yaw);
@@ -171,6 +166,7 @@ export default function MinimalUI({
   activePresetIdx, onPresetChange, customConfig, onCustomOpen,
   completionPhase, lang, onToggleLang, cameraActive,
 }: Props) {
+  const { W, CR } = getTheme(customConfig.themeKey);
   const inZone = phase === "hold" || phase === "resonance" || phase === "pause";
   const isResonating = phase === "resonance" || phase === "pause";
 
@@ -242,19 +238,19 @@ export default function MinimalUI({
 
       {/* ── AXIS DIALS (guided mode only) ───────────────────────── */}
       {guidedMode && activeStep.axis === "roll" && (
-        <HorizonDial roll={headRotation.roll} targetRoll={activeStep.target} inZone={inZone} />
+        <HorizonDial roll={headRotation.roll} targetRoll={activeStep.target} inZone={inZone} W={W} CR={CR} />
       )}
       {guidedMode && activeStep.axis === "pitch" && !activeStep.axis2 && (
-        <PitchDial pitch={headRotation.pitch} targetPitch={activeStep.target} inZone={inZone} />
+        <PitchDial pitch={headRotation.pitch} targetPitch={activeStep.target} inZone={inZone} W={W} CR={CR} />
       )}
       {guidedMode && activeStep.axis === "yaw" && !activeStep.axis2 && (
-        <YawDial yaw={headRotation.yaw} targetYaw={activeStep.target} inZone={inZone} />
+        <YawDial yaw={headRotation.yaw} targetYaw={activeStep.target} inZone={inZone} W={W} CR={CR} />
       )}
       {/* diagonal: yaw + pitch side-by-side */}
       {guidedMode && activeStep.axis === "yaw" && activeStep.axis2 === "pitch" && (
         <>
-          <YawDial   yaw={headRotation.yaw}     targetYaw={activeStep.target}           inZone={inZone} offsetX={-30} />
-          <PitchDial pitch={headRotation.pitch}  targetPitch={activeStep.target2 ?? 0}  inZone={inZone} offsetX={30}  />
+          <YawDial   yaw={headRotation.yaw}     targetYaw={activeStep.target}           inZone={inZone} offsetX={-30} W={W} CR={CR} />
+          <PitchDial pitch={headRotation.pitch}  targetPitch={activeStep.target2 ?? 0}  inZone={inZone} offsetX={30}  W={W} CR={CR} />
         </>
       )}
 
@@ -355,7 +351,7 @@ export default function MinimalUI({
 
           {/* Direction arrow — guided mode only, fades when holding */}
           {guidedMode && !isResonating && (
-            <Arrow dir={activeStep.arrowDir} faded={phase === "hold" && holdProgress > 0.4} />
+            <Arrow dir={activeStep.arrowDir} faded={phase === "hold" && holdProgress > 0.4} W={W} />
           )}
 
           {/* Resonance dot — guided mode only */}

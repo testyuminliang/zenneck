@@ -7,6 +7,8 @@ export interface CustomPreset {
   angle: number;   // reference angle in °; scale = angle / BASE_ANGLE(20)
 }
 
+export type ThemeKey = "terracotta" | "lavender" | "sage" | "ocean" | "rose";
+
 export interface CustomConfig {
   presets: [CustomPreset, CustomPreset, CustomPreset];
   stepOrder: number[];   // ordered step IDs (subset of all STEPS)
@@ -14,6 +16,7 @@ export interface CustomConfig {
   sfxEnabled: boolean;
   voiceCuesEnabled: boolean;
   customBgmName?: string; // filename shown in UI; actual audio stored in IndexedDB
+  themeKey?: ThemeKey;
 }
 
 export interface StepDef {
