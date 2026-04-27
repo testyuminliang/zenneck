@@ -40,11 +40,11 @@ export default function FluidBackground({
     ro.observe(canvas);
 
     const blobs = palette.flatMap((c, i) => [
-      { color: c, ox: 0.25, oy: 0.3, ax: 0.35, ay: 0.28, fx: 0.8 + i * 0.1, fy: 0.6 + i * 0.13, ph: i * 1.7, rSeed: 0.22 },
-      { color: c, ox: 0.75, oy: 0.7, ax: 0.3, ay: 0.35, fx: 0.7 + i * 0.11, fy: 0.9 + i * 0.07, ph: i * 2.3 + 3, rSeed: 0.28 },
+      { color: c, ox: 0.25, oy: 0.3, ax: 0.42, ay: 0.36, fx: 0.8 + i * 0.1, fy: 0.6 + i * 0.13, ph: i * 1.7, rSeed: 0.32 },
+      { color: c, ox: 0.75, oy: 0.7, ax: 0.38, ay: 0.42, fx: 0.7 + i * 0.11, fy: 0.9 + i * 0.07, ph: i * 2.3 + 3, rSeed: 0.38 },
     ]);
 
-    const alphaMul = intensity === "soft" ? 0.55 : intensity === "bright" ? 1.0 : 0.8;
+    const alphaMul = intensity === "soft" ? 0.82 : intensity === "bright" ? 1.0 : 0.9;
     const start = performance.now();
 
     const draw = () => {

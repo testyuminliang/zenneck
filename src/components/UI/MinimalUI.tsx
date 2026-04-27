@@ -264,7 +264,7 @@ export default function MinimalUI({
           width: "120px", height: "120px",
           marginLeft: "-60px", marginTop: "-60px",
           borderRadius: "50%",
-          border: `1.5px solid ${W}${(0.7 - i * 0.15).toFixed(2)})`,
+          border: `1.5px solid rgba(255,248,232,${(0.8 - i * 0.18).toFixed(2)})`,
           animation: `ring-pulse 1.6s ease-out ${i * 0.28}s forwards`,
           pointerEvents: "none", zIndex: 200,
         }} />
@@ -614,7 +614,7 @@ export default function MinimalUI({
           width: "120px", height: "120px",
           marginLeft: "-60px", marginTop: "-60px",
           borderRadius: "50%",
-          border: `${1.5 - i * 0.1}px solid ${W}${(0.8 - i * 0.08).toFixed(2)})`,
+          border: `${1.5 - i * 0.1}px solid rgba(255,248,232,${(0.85 - i * 0.08).toFixed(2)})`,
           animation: `completion-ring ${3.2 + i * 0.15}s ease-out ${i * 0.22}s forwards`,
           pointerEvents: "none", zIndex: 400,
         }} />

@@ -201,7 +201,6 @@ export function useAudio() {
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
   }, [stopBGM, startBGM]);
 
-  // ── Hold phase：过滤白噪声，像一波海浪/风缓缓涌上 ─────────────────
   // ── Hold phase：播放 sfx-hold-loop.mp3，音量随 progress 渐强 ──────
   const startCrescendo = useCallback(() => {
     if (crescendoRef.current || !sfxHoldBufRef.current) return;

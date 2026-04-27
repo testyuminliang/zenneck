@@ -150,7 +150,7 @@ function CondenseBloom({ progress }: { progress: number }) {
     for (let i = 0; i < seeds.length; i++) {
       const s = seeds[i];
       const ang = s.baseAng + t * s.orbitSpd;
-      const baseRad = R * lerp(3.0, 0.25, e);
+      const baseRad = R * lerp(1.5, 0.25, e);
       const wobR = Math.sin(t * s.wobF + i * 1.3) * R * s.wobA * (1 - e * 0.4);
       const wobT = Math.cos(t * s.tanF + i * 0.9) * R * s.tanA * (1 - e * 0.4);
       const rad = baseRad + wobR;
@@ -158,7 +158,7 @@ function CondenseBloom({ progress }: { progress: number }) {
       const bx = cx + Math.cos(ang) * rad + Math.cos(ang + Math.PI / 2) * tan;
       const by = cy + Math.sin(ang) * rad + Math.sin(ang + Math.PI / 2) * tan;
       const blobR = R * lerp(1.35, 0.7, e);
-      const alpha = lerp(0.48, 0.30, e);
+      const alpha = lerp(0.62, 0.38, e);
       const g = ctx.createRadialGradient(bx, by, 0, bx, by, blobR);
       g.addColorStop(0, hexToRgba(s.col, alpha));
       g.addColorStop(0.45, hexToRgba(s.col, alpha * 0.55));

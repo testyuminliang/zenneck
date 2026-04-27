@@ -1,7 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
-import { Preload } from "@react-three/drei";
-import ResonanceVortex from "./components/ResonanceVortex";
 import MinimalUI from "./components/UI/MinimalUI";
 import FaceTracker from "./components/FaceTracker";
 import CustomPanel from "./components/UI/CustomPanel";
@@ -86,25 +83,6 @@ function App() {
     if (phase === "hold" && guidedMode && customConfig.sfxEnabled) updateCrescendo(holdProgress);
   }, [holdProgress, phase, guidedMode]);
 
-  // In guided mode: curves react to proximity before hold, then hold progress
-  // In free mode: curves react to total head deviation
-  const alignmentProgress = (() => {
-    if (!guidedMode) {
-      const mag = Math.sqrt(headRotation.yaw ** 2 + headRotation.pitch ** 2 + headRotation.roll ** 2);
-      return Math.min(1, mag / 35);
-    }
-    if (phase === "resonance" || phase === "pause") return 1;
-    if (phase === "hold") return 0.3 + holdProgress * 0.7;
-    // guide phase: how far along toward the target line (0 at start, 1 at line)
-    const current = headRotation[activeStep.axis];
-    const tgt = activeStep.target;
-    const progress = tgt > 0
-      ? Math.max(0, Math.min(1, current / tgt))
-      : Math.max(0, Math.min(1, current / tgt));
-    return progress * 0.5;
-  })();
-
-  const isFormed = phase === "resonance" || phase === "pause";
 
   useEffect(() => {
     if (!isCompleted) return;
@@ -135,26 +113,6 @@ function App() {
   return (
     <div className="app-container">
       <FluidBackground />
-      <Canvas
-        camera={{ position: [0, 0, 6], fov: 50, near: 0.1, far: 100 }}
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-        dpr={[1, 2]}
-        style={{ background: "transparent" }}
-      >
-        {/* @ts-ignore */}
-        <ambientLight intensity={0.2} />
-        {/* @ts-ignore */}
-        <pointLight position={[0, 0, 4]} intensity={0.5} color="#C4785C" />
-
-        <ResonanceVortex
-          alignmentProgress={alignmentProgress}
-          isFormed={isFormed}
-          onFormed={() => {}}
-          headRotation={headRotation}
-        />
-
-        <Preload all />
-      </Canvas>
 
       <MeditationOverlay progress={meditationProgress} />
 
