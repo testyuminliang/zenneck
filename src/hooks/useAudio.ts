@@ -89,6 +89,10 @@ export function useAudio() {
   const activeCueRef        = useRef<{ source: AudioBufferSourceNode; gain: GainNode } | null>(null);
   const cueProtectedUntilRef = useRef(0); // ms timestamp — low-priority cues can't interrupt before this
 
+  // Master gain nodes for SFX and voice (created lazily alongside ctx)
+  const sfxMasterRef   = useRef<GainNode | null>(null);
+  const cueMasterRef   = useRef<GainNode | null>(null);
+
   function getCtx(): AudioContext {
     if (!ctxRef.current) {
       const ctx = new AudioContext();
@@ -96,6 +100,11 @@ export function useAudio() {
         if (ctx.state === "suspended") ctx.resume();
       });
       ctxRef.current = ctx;
+      // Create master gain nodes once per context
+      sfxMasterRef.current = ctx.createGain();
+      sfxMasterRef.current.connect(ctx.destination);
+      cueMasterRef.current = ctx.createGain();
+      cueMasterRef.current.connect(ctx.destination);
     }
     if (ctxRef.current.state === "suspended") ctxRef.current.resume();
     return ctxRef.current;
@@ -108,6 +117,10 @@ export function useAudio() {
       if (ab) {
         try {
           customBufRef.current = await getCtx().decodeAudioData(ab);
+          if (bgmPendingRef.current) {
+            bgmPendingRef.current = false;
+            startBGM();
+          }
         } catch { /* corrupted */ }
       } else {
         try {
@@ -175,14 +188,14 @@ export function useAudio() {
     };
   }, []);
 
-  function playSfxBuffer(buf: AudioBuffer, volume = 0.8) {
-    const ctx    = getCtx();
-    const gain   = ctx.createGain();
+  function playSfxBuffer(buf: AudioBuffer, volume = 1.0) {
+    const ctx  = getCtx();
+    const gain = ctx.createGain();
     gain.gain.value = volume;
     const source = ctx.createBufferSource();
     source.buffer = buf;
     source.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(sfxMasterRef.current ?? ctx.destination);
     source.start();
   }
 
@@ -199,6 +212,7 @@ export function useAudio() {
 
     bgmStartingRef.current = true;
     const ctx = getCtx();
+    if (ctx.state === "suspended") await ctx.resume();
 
     const masterGain = ctx.createGain();
     masterGain.gain.value = 0.70;
@@ -262,7 +276,7 @@ export function useAudio() {
 
     const masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0, ctx.currentTime);
-    masterGain.connect(ctx.destination);
+    masterGain.connect(sfxMasterRef.current ?? ctx.destination);
 
     const source = ctx.createBufferSource();
     source.buffer = sfxHoldBufRef.current;
@@ -319,8 +333,8 @@ export function useAudio() {
 
     const ctx = getCtx();
     const gain = ctx.createGain();
-    gain.gain.value = 0.75;
-    gain.connect(ctx.destination);
+    gain.gain.value = 1.0;
+    gain.connect(cueMasterRef.current ?? ctx.destination);
     const source = ctx.createBufferSource();
     source.buffer = buf;
     source.connect(gain);
@@ -329,21 +343,50 @@ export function useAudio() {
     activeCueRef.current = { source, gain };
   }, []);
 
+  // ── Stop active voice cue immediately ────────────────────────────
+  const stopCue = useCallback(() => {
+    const prev = activeCueRef.current;
+    if (!prev) return;
+    activeCueRef.current = null;
+    const ctx = getCtx();
+    prev.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+    setTimeout(() => { try { prev.source.stop(); } catch { /* ok */ } }, 300);
+  }, []);
+
   // ── Step complete chime ───────────────────────────────────────────
   const playStepComplete = useCallback(() => {
-    if (sfxStepBufRef.current) playSfxBuffer(sfxStepBufRef.current, 1.2);
+    if (sfxStepBufRef.current) playSfxBuffer(sfxStepBufRef.current, 1.0);
   }, []);
 
   // ── Session complete ──────────────────────────────────────────────
   const playSessionComplete = useCallback(() => {
-    if (sfxSessionBufRef.current) playSfxBuffer(sfxSessionBufRef.current, 1.3);
+    if (sfxSessionBufRef.current) playSfxBuffer(sfxSessionBufRef.current, 1.0);
+  }, []);
+
+  const resumeCtx = useCallback(async () => {
+    const ctx = getCtx();
+    if (ctx.state === "suspended") await ctx.resume();
+  }, []);
+
+  const setBgmVolume = useCallback((v: number) => {
+    const nodes = bgmRef.current;
+    if (nodes) nodes.masterGain.gain.setTargetAtTime(v, getCtx().currentTime, 0.05);
+  }, []);
+
+  const setSfxVolume = useCallback((v: number) => {
+    if (sfxMasterRef.current) sfxMasterRef.current.gain.setTargetAtTime(v, getCtx().currentTime, 0.05);
+  }, []);
+
+  const setVoiceVolume = useCallback((v: number) => {
+    if (cueMasterRef.current) cueMasterRef.current.gain.setTargetAtTime(v, getCtx().currentTime, 0.05);
   }, []);
 
   return {
-    startBGM, stopBGM,
+    startBGM, stopBGM, resumeCtx,
+    setBgmVolume, setSfxVolume, setVoiceVolume,
     loadCustomBgm, clearCustomBgm,
     startCrescendo, updateCrescendo, stopCrescendo,
-    playStepComplete, playSessionComplete, playCue,
+    playStepComplete, playSessionComplete, playCue, stopCue,
   };
 }
 

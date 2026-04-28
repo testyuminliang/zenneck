@@ -15,6 +15,9 @@ export interface CustomConfig {
   bgmEnabled: boolean;
   sfxEnabled: boolean;
   voiceCuesEnabled: boolean;
+  bgmVolume: number;    // 0–1
+  sfxVolume: number;    // 0–1
+  voiceVolume: number;  // 0–1
   customBgmName?: string; // filename shown in UI; actual audio stored in IndexedDB
   themeKey?: ThemeKey;
 }

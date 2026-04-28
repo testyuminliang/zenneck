@@ -108,7 +108,7 @@ function StepRow({
 }
 
 export default function CustomPanel({ config, allSteps, onChange, onClose, onUploadBgm, onClearBgm, lang }: Props) {
-  const { W, CR } = getTheme(config.themeKey);
+  const { W, CR, swatch } = getTheme(config.themeKey);
 
   function setPresetAngle(idx: number, raw: string) {
     const v = parseInt(raw);
@@ -165,9 +165,19 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
       border: `0.5px solid ${W}0.25)`,
       boxShadow: `0 8px 32px ${CR}0.12), 0 2px 8px ${CR}0.08)`,
       display: "flex", flexDirection: "column",
-      maxHeight: "72vh",
+      height: "72vh",
       overflow: "hidden",
     }}>
+
+      <style>{`
+        .vol-slider { -webkit-appearance: none; appearance: none; height: 2px; border-radius: 1px; outline: none; background: transparent; }
+        .vol-slider::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: ${CR}0.15); }
+        .vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 7px; height: 7px; border-radius: 50%; background: ${swatch}; margin-top: -2.5px; }
+        .vol-slider::-moz-range-track { height: 2px; border-radius: 1px; background: ${CR}0.15); }
+        .vol-slider::-moz-range-thumb { width: 7px; height: 7px; border-radius: 50%; background: ${swatch}; border: none; }
+        .vol-slider:disabled::-webkit-slider-thumb { background: ${CR}0.25); }
+        .vol-slider:disabled::-moz-range-thumb { background: ${CR}0.25); }
+      `}</style>
 
       {/* ── Header ── */}
       <div style={{
@@ -226,28 +236,34 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
 
         {/* ── Section 0: Audio toggles ── */}
         <div style={{ padding: "12px 16px 10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          {/* BGM / SFX / Voice toggles */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            {(["bgmEnabled", "sfxEnabled", "voiceCuesEnabled"] as const).map((key) => {
-              const label = key === "bgmEnabled" ? t('bgm', lang) : key === "sfxEnabled" ? t('sfx', lang) : t('voiceCues', lang);
-              const on = config[key];
-              return (
+          {/* BGM / SFX / Voice toggles + volume sliders */}
+          {(
+            [
+              { toggleKey: "bgmEnabled",       volKey: "bgmVolume",   labelKey: "bgm"        },
+              { toggleKey: "sfxEnabled",        volKey: "sfxVolume",   labelKey: "sfx"        },
+              { toggleKey: "voiceCuesEnabled",  volKey: "voiceVolume", labelKey: "voiceCues"  },
+            ] as const
+          ).map(({ toggleKey, volKey, labelKey }) => {
+            const on  = config[toggleKey];
+            const vol = config[volKey];
+            return (
+              <div key={toggleKey} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {/* icon toggle */}
                 <div
-                  key={key}
-                  onClick={() => onChange({ ...config, [key]: !on })}
+                  onClick={() => onChange({ ...config, [toggleKey]: !on })}
                   style={{
                     flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                    gap: "6px", padding: "6px 8px", borderRadius: "9px",
+                    gap: "5px", padding: "5px 0", borderRadius: "8px",
                     border: `0.5px solid ${on ? `${W}0.35)` : `${CR}0.12)`}`,
                     background: on ? `${W}0.10)` : `${CR}0.04)`,
                     cursor: "pointer", transition: "all 0.2s", userSelect: "none",
                   }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
-                    {key === "voiceCuesEnabled" ? (
+                  <svg width="10" height="10" viewBox="0 0 11 11">
+                    {toggleKey === "voiceCuesEnabled" ? (
                       <path d="M2 4h1.5l2-2.5v7L3.5 6H2a.5.5 0 01-.5-.5v-1A.5.5 0 012 4zM7.5 3.5a3 3 0 010 4M9 2a5 5 0 010 7"
                         fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                    ) : key === "bgmEnabled" ? (
+                    ) : toggleKey === "bgmEnabled" ? (
                       <>
                         <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                         <circle cx="3.5" cy="8.8" r="1.1" fill={`${on ? W : CR}${on ? "0.7" : "0.3"})`} />
@@ -260,17 +276,38 @@ export default function CustomPanel({ config, allSteps, onChange, onClose, onUpl
                         <path d="M6.5 9.5 V1.5" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
                         <path d="M9 8 V3" stroke={`${on ? W : CR}${on ? "0.7" : "0.3"})`} strokeWidth="1.2" strokeLinecap="round" />
                       </>
-                    ) }
+                    )}
                   </svg>
                   <span style={{
-                    fontSize: "10px", letterSpacing: "0.06em",
-                    color: `${CR}${on ? "0.72" : "0.35"})`,
+                    fontSize: "9px", letterSpacing: "0.06em",
+                    color: `${CR}${on ? "0.65" : "0.32"})`,
                     fontFamily: "'DM Sans',sans-serif",
-                  }}>{label}</span>
+                  }}>{t(labelKey, lang)}</span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* slider + value — fixed short width */}
+                <div style={{
+                  width: "72px", flexShrink: 0, display: "flex", alignItems: "center", gap: "4px",
+                  opacity: on ? 1 : 0.3, transition: "opacity 0.2s",
+                }}>
+                  <input
+                    type="range" min={0} max={1} step={0.01}
+                    value={vol}
+                    disabled={!on}
+                    onChange={e => onChange({ ...config, [volKey]: parseFloat(e.target.value) })}
+                    className="vol-slider"
+                    style={{ width: "48px", flexShrink: 0, cursor: on ? "pointer" : "default", accentColor: swatch }}
+                  />
+                  <span style={{
+                    fontSize: "8px", fontFamily: "monospace",
+                    color: `${CR}0.4)`, width: "20px", textAlign: "right", flexShrink: 0,
+                  }}>
+                    {Math.round(vol * 100)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
 
           {/* Custom BGM upload row */}
           <div style={{
