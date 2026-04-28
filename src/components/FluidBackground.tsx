@@ -67,8 +67,7 @@ export default function FluidBackground({
       s.x += (target.x - s.x) * LERP;
       s.y += (target.y - s.y) * LERP;
 
-      ctx.fillStyle = baseColor;
-      ctx.fillRect(0, 0, w, h);
+      ctx.clearRect(0, 0, w, h);
       for (const b of blobs) {
         const cx = (b.ox + Math.sin(t * b.fx + b.ph) * b.ax + s.x * DRIFT * b.driftMul) * w;
         const cy = (b.oy + Math.cos(t * b.fy + b.ph * 1.3) * b.ay + s.y * DRIFT * b.driftMul) * h;
@@ -90,7 +89,7 @@ export default function FluidBackground({
   }, [palette.join("|"), speed, intensity, baseColor]);
 
   return (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: baseColor }}>
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: "transparent" }}>
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
           <filter id="goo-fluid">
