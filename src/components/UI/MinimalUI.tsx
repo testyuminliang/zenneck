@@ -932,6 +932,30 @@ export default function MinimalUI({
           </div>
         )}
 
+        {/* ── MADE BY ── */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: "14px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 100,
+            pointerEvents: "none",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "9px",
+              letterSpacing: "0.15em",
+              color: `${CR}0.28)`,
+              fontFamily: "monospace",
+              whiteSpace: "nowrap",
+            }}
+          >
+            MADE BY MINLIANG YU
+          </span>
+        </div>
+
         {/* ── CAMERA PERMISSION NOTICE + MUSIC TIP (free mode only) ── */}
         {!guidedMode && (
           <div
@@ -1002,6 +1026,19 @@ export default function MinimalUI({
                     : t("cameraHint", lang)}
               </span>
             </div>
+            <span
+              style={{
+                fontSize: "9px",
+                letterSpacing: "0.12em",
+                color: `${CR}0.35)`,
+                fontFamily: "monospace",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {lang === "zh"
+                ? "仅用于姿势检测，不收集任何人脸信息"
+                : "POSE ONLY · NO FACE DATA COLLECTED"}
+            </span>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <svg
                 width="12"
