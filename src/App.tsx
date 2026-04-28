@@ -23,7 +23,10 @@ const DEFAULT_CONFIG: CustomConfig = {
   stepOrder: [2, 3, 0, 1, 4, 5],
   bgmEnabled: true,
   sfxEnabled: true,
-  voiceCuesEnabled: false,
+  voiceCuesEnabled: true,
+  bgmVolume: 0.7,
+  sfxVolume: 0.8,
+  voiceVolume: 0.75,
 };
 
 function App() {
@@ -88,6 +91,11 @@ function App() {
     playStepComplete,
     playSessionComplete,
     playCue,
+    stopCue,
+    resumeCtx,
+    setBgmVolume,
+    setSfxVolume,
+    setVoiceVolume,
   } = useAudio();
 
   // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
@@ -96,6 +104,31 @@ function App() {
     else stopBGM();
     return () => stopBGM();
   }, [customConfig.bgmEnabled, startBGM, stopBGM]);
+
+  // 摄像头首次激活时 resume AudioContext 并确保 BGM 启动（绕过浏览器 autoplay 限制）
+  const audioUnlockedRef = useRef(false);
+  useEffect(() => {
+    if (!cameraActive || audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    resumeCtx().then(() => {
+      if (customConfig.bgmEnabled) startBGM();
+    });
+  }, [cameraActive]);
+
+  // SFX 关闭时立即停止正在播放的 crescendo
+  useEffect(() => {
+    if (!customConfig.sfxEnabled) stopCrescendo();
+  }, [customConfig.sfxEnabled]);
+
+  // 人声关闭时立即停止正在播放的 cue
+  useEffect(() => {
+    if (!customConfig.voiceCuesEnabled) stopCue();
+  }, [customConfig.voiceCuesEnabled]);
+
+  // 音量实时同步
+  useEffect(() => { setBgmVolume(customConfig.bgmVolume); }, [customConfig.bgmVolume]);
+  useEffect(() => { setSfxVolume(customConfig.sfxVolume); }, [customConfig.sfxVolume]);
+  useEffect(() => { setVoiceVolume(customConfig.voiceVolume); }, [customConfig.voiceVolume]);
 
   // Voice cue — fires when a new step starts in guided mode
   useEffect(() => {
@@ -236,8 +269,16 @@ function App() {
         ? holdProgress
         : 0;
 
+  function handleFirstInteraction() {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    resumeCtx().then(() => {
+      if (customConfig.bgmEnabled) startBGM();
+    });
+  }
+
   return (
-    <div className="app-container">
+    <div className="app-container" onClick={handleFirstInteraction}>
       <FluidBackground
         palette={theme.bgPalette}
         baseColor={theme.bgBase}

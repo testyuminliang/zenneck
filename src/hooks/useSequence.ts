@@ -6,7 +6,7 @@ export const STEPS: StepDef[] = [
   { id: 0, axis: "roll",  target:  20, tolerance: 5, holdMs: 9000, label: "向右侧倾", cue: "tilt right",   arrowDir: "right"       },
   { id: 1, axis: "roll",  target: -20, tolerance: 5, holdMs: 9000, label: "向左侧倾", cue: "tilt left",    arrowDir: "left"        },
   { id: 2, axis: "pitch", target: -20, tolerance: 5, holdMs: 9000, label: "抬头仰望", cue: "look up",      arrowDir: "up"          },
-  { id: 3, axis: "pitch", target:  20, tolerance: 5, holdMs: 9000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
+  { id: 3, axis: "pitch", target:  15, tolerance: 5, holdMs: 9000, label: "低头放松", cue: "look down",    arrowDir: "down"        },
   { id: 4, axis: "yaw",   target:  20, tolerance: 6, holdMs: 9000, label: "向右转头", cue: "turn right",   arrowDir: "right"       },
   { id: 5, axis: "yaw",   target: -20, tolerance: 6, holdMs: 9000, label: "向左转头", cue: "turn left",    arrowDir: "left"        },
   { id: 6, axis: "yaw",   target:  25, tolerance: 5, holdMs: 9000, label: "右上方转头", cue: "look up-right",   arrowDir: "up-right",   axis2: "pitch", target2: -20 },
