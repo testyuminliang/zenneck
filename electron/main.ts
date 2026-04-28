@@ -66,6 +66,7 @@ function createWindow() {
     width: COMPANION.width,
     height: COMPANION.height,
     transparent: true,
+    roundedCorners: true,
     frame: isDev,
     alwaysOnTop: !isDev,
     resizable: isDev,
