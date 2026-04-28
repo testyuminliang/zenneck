@@ -1,28 +1,80 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { app, BrowserWindow, Tray, Menu, nativeImage, screen } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, screen, globalShortcut } = require("electron");
 const path_1 = require("path");
 let win = null;
 let tray = null;
+let isCompanionMode = true; // 小窗精灵模式
 const isDev = process.env.NODE_ENV === "development";
+const COMPANION = { width: 400, height: 600 };
+function applyCompanionMode() {
+    if (!win)
+        return;
+    const display = screen.getPrimaryDisplay();
+    const { width, height } = display.workAreaSize;
+    win.setResizable(false);
+    win.setAlwaysOnTop(true);
+    win.setSkipTaskbar(true);
+    win.setSize(COMPANION.width, COMPANION.height);
+    win.setPosition(width - COMPANION.width - 20, height - COMPANION.height - 20);
+    if (!isDev) {
+        win.setWindowButtonVisibility?.(false);
+    }
+}
+function applyFullscreenMode() {
+    if (!win)
+        return;
+    win.setResizable(true);
+    win.setAlwaysOnTop(false);
+    win.setSkipTaskbar(false);
+    win.setFullScreen(true);
+    if (!isDev) {
+        win.setWindowButtonVisibility?.(true);
+    }
+}
+function toggleMode() {
+    isCompanionMode = !isCompanionMode;
+    if (isCompanionMode) {
+        win?.setFullScreen(false);
+        applyCompanionMode();
+    }
+    else {
+        applyFullscreenMode();
+    }
+    updateTrayMenu();
+}
+function updateTrayMenu() {
+    const menu = Menu.buildFromTemplate([
+        {
+            label: isCompanionMode ? "切换全屏" : "切换小窗",
+            click: toggleMode,
+        },
+        { type: "separator" },
+        { label: "显示", click: () => win?.show() },
+        { label: "隐藏", click: () => win?.hide() },
+        { type: "separator" },
+        { label: "退出", click: () => app.quit() },
+    ]);
+    tray.setContextMenu(menu);
+}
 function createWindow() {
     win = new BrowserWindow({
-        width: 400,
-        height: 600,
+        width: COMPANION.width,
+        height: COMPANION.height,
         transparent: true,
-        frame: false,
-        alwaysOnTop: true,
-        resizable: false,
-        skipTaskbar: true,
+        frame: isDev,
+        alwaysOnTop: !isDev,
+        resizable: isDev,
+        skipTaskbar: !isDev,
         webPreferences: {
             preload: (0, path_1.join)(__dirname, "preload.cjs"),
             contextIsolation: true,
         },
     });
-    const display = screen.getPrimaryDisplay();
-    const { width, height } = display.workAreaSize;
-    win.setPosition(width - 420, height - 620);
+    if (!isDev) {
+        applyCompanionMode();
+    }
     if (isDev) {
         win.loadURL("http://localhost:5173");
         win.webContents.openDevTools({ mode: "detach" });
@@ -35,17 +87,16 @@ function createTray() {
     const icon = nativeImage.createEmpty();
     tray = new Tray(icon);
     tray.setToolTip("Zenneck");
-    const menu = Menu.buildFromTemplate([
-        { label: "显示", click: () => win?.show() }, // eslint-disable-line
-        { label: "隐藏", click: () => win?.hide() }, // eslint-disable-line
-        { type: "separator" },
-        { label: "退出", click: () => app.quit() },
-    ]);
-    tray.setContextMenu(menu);
+    updateTrayMenu();
 }
 app.whenReady().then(() => {
     createWindow();
     createTray();
+    // 快捷键 Cmd+Shift+F 切换模式
+    globalShortcut.register("CommandOrControl+Shift+F", toggleMode);
+});
+app.on("will-quit", () => {
+    globalShortcut.unregisterAll();
 });
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin")
