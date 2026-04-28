@@ -1,43 +1,70 @@
-# ZenNeck - 3D Visual Alignment & Neck-Spine Meditation Experience
+# ZenNeck — A Story About My Neck, My Screen, and a Moment of Stillness
 
-A sophisticated React 19 + Three.js + MediaPipe Face Tracking application that creates an immersive 3D experience combining particle physics, real-time face detection, and meditative interaction patterns.
+A meditative web app that uses your camera to guide you through a quiet sequence of neck movements — each one rewarded with ten thousand golden particles blooming into stillness.
 
-## 🎨 Visual Identity
+---
 
-- **Background**: Deep radial gradient from #001A12 to absolute black with golden particle dust
-- **Primary Colors**: 18K gold (#FFD700), soft white (#F5F2EE), semi-transparent glass effects
-- **Effects**: UnrealBloom (cinematic glow), particle systems with fluid dynamics
-- **Aesthetic**: Minimalist HUD with focus on 3D depth and ethereal motion
+## Inspiration
 
-## 🔧 Core Features
+It started with a message from my mom.
 
-### 1. **Particle System (10,000 particles)**
+I was at my desk, mid-afternoon, doing what many of us quietly do — scrolling through my phone instead of working. And almost every time I chatted with my parents, somewhere in the conversation, one of them would say:
 
-- **CHAOS State**: Particles flow with Simplex Noise-driven fluid dynamics, creating organic turbulence
-- **FORMED State**: Auto-triggers when head Roll angle reaches 18° (±2° tolerance), particles snap into a perfect grid forming a 3D Polaroid photograph
-- **Transition**: Smooth 600ms easing with cinematic bloom burst (intensity 1.0 → 3.0)
+> *"Remember to rest. Move around a little. Watch out for your neck!"*
 
-### 2. **Face Tracking Integration (MediaPipe)**
+I'd reply "okay okay" and put my phone down. But it kept happening. Every week. The same gentle, slightly nagging reminder that I'd learned to half-ignore — until I realized I was sitting in the exact posture they were warning me about, reading the exact message they always sent.
 
-- Real-time facial landmark detection (468 points)
-- Head rotation extraction:
-  - **Yaw** (left/right turn) → Camera X displacement
-  - **Pitch** (up/down tilt) → Camera Y displacement
-  - **Roll** (head tilt) → Alignment trigger mechanism
-- All values smoothed with exponential lerp for stutter-free motion
+What if taking care of your neck felt like an achievement instead of a chore?
+What if — just for a moment — tilting your head to the side felt like unlocking something beautiful?
+That question became ZenNeck.
 
-### 3. **Interactive UI Components**
+---
 
-- **Center Focus**: Subtle crosshair that brightens as alignment approaches target
-- **Aura Widget**: Rotating semi-transparent sphere in bottom-right reflecting alignment state
-- **Floating Photos**: 4 Polaroid-like meshes scattered in 3D space with subtle bobbing animation
+## What it does
 
-### 4. **Post-Processing**
+ZenNeck guides you through a quiet sequence of neck movements — each one gently prompted, each one rewarded. As you follow along, ten thousand golden particles swirl in organic chaos, and at just the right moment, they snap into a perfect glowing grid: a bloom of light, a breath of stillness. The angle is customizable with three presets — light (13°), medium (20°), and deep (30°) — so the experience meets you where you are.
 
-- Bloom effect with dynamic intensity tied to alignment progress
-- Color depth processing for enhanced visual depth
+The whole session unfolds with soft ambient sound and subtle visual cues. It's not a workout app. It's closer to a ritual: guided, unhurried, and quietly satisfying.
 
-## 🚀 Getting Started
+---
+
+## How I built it
+
+Everything runs locally in the browser — no server, no account, no friction.
+
+The camera watches your face in real time using **MediaPipe** (468 facial landmarks), extracting head roll, yaw, and pitch frame by frame. A custom sequencing system walks you through a series of neck movements in order, tracking how long you hold each position. When you hit the target angle, the particle system responds: ten thousand golden points stop their chaotic dance and snap into a still, glowing grid.
+
+A **ResonanceVortex** and **FluidBackground** layer in additional visual depth, and a soft UnrealBloom effect gives everything that warm, candlelit feeling. Audio — background music, sound effects, and optional voice cues — makes the experience feel complete, not just visual.
+
+My development process matched the app's spirit: slow, deliberate, one step at a time. I tackled one feature per session — get it running first, verify it feels right, then refine. No big rewrites, no chasing multiple things at once. Each small loop closed before the next one opened.
+
+---
+
+## Accomplishments that I'm proud of
+
+Every milestone felt like a small celebration: the first time the particle system ran without crashing, the first time the bloom fired at exactly the right moment, the first time the guided sequence completed end-to-end and it just *felt right*. Going from a rough proof-of-concept to a polished MVP — and then sharing a screen recording with friends and family and hearing *"wow, this is beautiful"* — that meant everything.
+
+I'm also proud that the entire experience runs client-side, with no data leaving the browser. Your face is never stored or transmitted. It's just you and the particles.
+
+---
+
+## What I learned
+
+- **Intention is a design tool.** Knowing *why* something should feel a certain way is just as important as knowing *how* to build it.
+- **You don't need to know the technology before you need it.** Starting from a feeling and working backwards toward implementation is a valid — and often powerful — way to build.
+- **Small wins compound.** Each closed loop, each working feature, each moment of "it finally looks right" builds momentum that carries the whole project forward.
+
+---
+
+## What's next for ZenNeck
+
+The next version: a **desktop companion** — a lightweight spirit that lives in your taskbar and gently reminds you to tilt your head, no browser required. Because the best reminder is the one you don't have to remember to open.
+
+My parents have been telling me to take care of myself since I was a kid. Now a little app whispers the same thing — just with ten thousand particles and a bloom of gold light.
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
@@ -66,132 +93,74 @@ npm run build
 
 Output in `dist/` directory.
 
-## 📁 Project Structure
+---
+
+## Technical Stack
+
+- **React 19** — UI framework with Hooks
+- **Three.js** (v0.160) — 3D rendering engine
+- **React Three Fiber** (v8.14) — React bindings for Three.js
+- **@react-three/postprocessing** — UnrealBloom & post-processing effects
+- **MediaPipe** (v0.10) — Face landmark detection & pose estimation (468 points)
+- **Simplex Noise** (v4.0) — Procedural noise for fluid particle dynamics
+- **Vite** — Build tool & dev server
+- **TypeScript** — Type safety
+
+## Visual Identity
+
+- **Background**: Deep radial gradient from `#001A12` to absolute black with golden particle dust
+- **Primary Colors**: 18K gold (`#FFD700`), soft white (`#F5F2EE`), semi-transparent glass effects
+- **Effects**: UnrealBloom cinematic glow, fluid particle dynamics, ResonanceVortex overlay
+- **Aesthetic**: Minimalist HUD with focus on 3D depth and ethereal motion
+
+## Project Structure
 
 ```
 src/
-├── App.tsx                    # Main Canvas setup, state management
+├── App.tsx                    # Main state management & sequencing
+├── hooks/
+│   ├── useSequence.ts         # Guided neck movement sequence logic
+│   └── useAudio.ts            # BGM, SFX, voice cue management
 ├── components/
-│   ├── ParticleSystem.tsx     # 10K particle chaos→formed logic
-│   ├── FloatingPhotos.tsx     # Animated Polaroid meshes
-│   ├── PostProcessing.tsx     # Bloom & color effects
-│   ├── FaceTracker.tsx        # MediaPipe integration
+│   ├── FaceTracker.tsx        # MediaPipe integration (468-point landmarks)
+│   ├── FluidBackground.tsx    # Animated background layer
+│   ├── MeditationOverlay.tsx  # Hold-progress ring & completion visuals
+│   ├── ResonanceVortex.tsx    # Alignment state visual effect
+│   ├── PostEffects.tsx        # Bloom & color depth processing
 │   └── UI/
-│       ├── CenterFocus.tsx    # Crosshair indicator
-│       ├── AuraWidget.tsx     # Rotating sphere visualization
-│       └── UI.css             # Styled components
-├── index.css                  # Global styles
-└── App.css                    # App container styles
+│       ├── MinimalUI.tsx      # Main HUD & preset controls
+│       └── CustomPanel.tsx    # Settings panel (angle, audio, theme)
+├── themes.ts                  # Customizable color themes
+├── lang.ts                    # zh / en language strings
+└── types.ts                   # Shared TypeScript types
 ```
 
-## 🎯 Interaction Flow
+## Interaction Flow
 
-1. **Start**: Particles enter CHAOS mode with organic Simplex noise motion
-2. **Track**: Face camera captures head position and rotation in real-time
-3. **Align**: User tilts head sideways to target 18° roll angle
-4. **Trigger**: When roll reaches target ±2°, particles transition to FORMED state
-5. **Bloom**: Intense bloom burst signals successful alignment
-6. **Result**: Particles form perfect grid snapshot (Polaroid photo style)
+1. **Start** — Particles enter CHAOS mode with organic Simplex noise motion
+2. **Track** — Camera captures head position and rotation in real-time
+3. **Guide** — A sequence of neck movement prompts appears one by one
+4. **Hold** — Hold each position at the target angle; a progress ring fills
+5. **Bloom** — UnrealBloom burst signals successful hold
+6. **Complete** — Full sequence completion triggers a final ripple & clearing effect
 
-## ⚙️ Technical Stack
-
-- **React 19**: UI framework with Hooks
-- **Three.js** (v0.160): 3D rendering engine
-- **React Three Fiber** (v8.14): React bindings for Three.js
-- **@react-three/postprocessing**: Post-processing effects (Bloom)
-- **@react-three/drei**: Utility components (Preload, etc.)
-- **MediaPipe** (v0.10): Face landmark detection & pose estimation
-- **Simplex Noise** (v4.0): Procedural Perlin noise generation
-- **Vite**: Build tool & dev server
-- **TypeScript**: Type safety
-
-## 🎮 Controls
-
-- **Head Tracking**: Use device camera
-- **Head Roll (Tilt)**: Primary interaction - tilt head left/right
-- **Head Yaw/Pitch**: Subtly moves camera for immersion
-
-## ⚡ Performance Considerations
+## Performance
 
 - GPU-accelerated particle rendering (Points geometry)
 - Efficient buffer attribute updates only when needed
-- Cached geometries and materials (useMemo)
-- Video element at low opacity for minimal visual impact
+- Cached geometries and materials via `useMemo`
 - Optimized bloom processing with luminance threshold
 
-## 🔐 Browser Compatibility
+## Browser Compatibility
 
-Requires:
+Requires WebGL 2.0, `getUserMedia` API, and ES2020+ support.
 
-- WebGL 2.0 support
-- getUserMedia API (camera access)
-- ES2020+ JavaScript support
-
-Tested on:
-
-- Chrome 90+
-- Firefox 88+
-- Safari 15+
-- Edge 90+
-
-## 📝 License
-
-MIT
-
-## 🙏 Inspiration
-
-Designed as a meditative 3D experience combining:
-
-- Particle physics (chaos to order transformation)
-- Neck/spine alignment mindfulness
-- Immersive 3D visual feedback
-- Subtle interaction mechanics
+Tested on Chrome 90+, Firefox 88+, Safari 15+, Edge 90+.
 
 ---
 
-**Note**: This application requires camera permissions. Privacy-first design ensures all face tracking happens locally on your device—no data transmission.
-tseslint.configs.stylisticTypeChecked,
+**Privacy**: All face tracking happens locally on your device. No data is ever transmitted or stored.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
+## License
 
-},
-])
-
-````
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-````
+MIT
