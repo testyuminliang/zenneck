@@ -266,6 +266,12 @@ export function useAudio() {
   const clearCustomBgm = useCallback(async () => {
     customBufRef.current = null;
     await idbDelete();
+    if (!defaultBufRef.current) {
+      try {
+        const res = await fetch("/audio/default-bgm.mp3");
+        defaultBufRef.current = await getCtx().decodeAudioData(await res.arrayBuffer());
+      } catch { /* no default bgm */ }
+    }
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
   }, [stopBGM, startBGM]);
 

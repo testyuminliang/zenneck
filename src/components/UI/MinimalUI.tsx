@@ -961,7 +961,7 @@ export default function MinimalUI({
           <div
             style={{
               position: "fixed",
-              top: "52px",
+              top: "48px",
               left: "50%",
               transform: "translateX(-50%)",
               zIndex: 100,
@@ -969,104 +969,81 @@ export default function MinimalUI({
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: "6px",
+              gap: "8px",
             }}
           >
+            {/* camera status pill */}
             <div
-              onClick={
-                cameraFailed && !cameraActive
-                  ? () => window.location.reload()
-                  : undefined
-              }
+              onClick={cameraFailed && !cameraActive ? () => window.location.reload() : undefined}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "4px 11px 4px 8px",
+                borderRadius: "20px",
+                background: cameraActive
+                  ? "rgba(120,190,120,0.10)"
+                  : cameraFailed
+                    ? "rgba(220,120,100,0.10)"
+                    : `${W}0.07)`,
+                border: `0.5px solid ${
+                  cameraActive ? "rgba(120,190,120,0.28)"
+                  : cameraFailed ? "rgba(220,120,100,0.28)"
+                  : `${W}0.18)`
+                }`,
                 cursor: cameraFailed && !cameraActive ? "pointer" : "default",
+                transition: "all 0.5s ease",
               }}
             >
-              <div
-                style={{
-                  width: "7px",
-                  height: "7px",
-                  borderRadius: "50%",
-                  background: cameraActive
-                    ? "rgba(120,190,120,0.9)"
-                    : cameraFailed
-                      ? "rgba(220,120,100,0.85)"
-                      : `${W}0.65)`,
-                  boxShadow: cameraActive
-                    ? "0 0 6px rgba(120,190,120,0.6)"
-                    : cameraFailed
-                      ? "0 0 6px rgba(220,120,100,0.5)"
-                      : `0 0 4px ${W}0.3)`,
-                  animation: cameraActive
-                    ? "none"
-                    : "breathe 3s ease-in-out infinite",
-                  transition: "background 0.6s ease, box-shadow 0.6s ease",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: "13px",
-                  letterSpacing: "0.1em",
-                  color:
-                    cameraFailed && !cameraActive
-                      ? "rgba(220,120,100,0.85)"
-                      : `${CR}0.78)`,
-                  fontFamily: "'DM Sans',sans-serif",
-                  fontWeight: 500,
-                }}
-              >
-                {cameraActive
-                  ? t("cameraOn", lang)
-                  : cameraFailed
-                    ? t("cameraFailed", lang)
-                    : t("cameraHint", lang)}
+              <div style={{
+                width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0,
+                background: cameraActive
+                  ? "rgba(120,190,120,0.9)"
+                  : cameraFailed ? "rgba(220,120,100,0.85)"
+                  : `${W}0.55)`,
+                boxShadow: cameraActive ? "0 0 5px rgba(120,190,120,0.5)" : "none",
+                animation: cameraActive ? "none" : "breathe 3s ease-in-out infinite",
+                transition: "background 0.6s ease",
+              }} />
+              <span style={{
+                fontSize: "11px", letterSpacing: "0.08em",
+                color: cameraActive
+                  ? "rgba(80,150,80,0.85)"
+                  : cameraFailed ? "rgba(200,90,70,0.85)"
+                  : `${CR}0.55)`,
+                fontFamily: "'DM Sans',sans-serif",
+                fontWeight: 400,
+                transition: "color 0.5s ease",
+              }}>
+                {cameraActive ? t("cameraOn", lang) : cameraFailed ? t("cameraFailed", lang) : t("cameraHint", lang)}
               </span>
             </div>
-            <span
-              style={{
-                fontSize: "9px",
-                letterSpacing: "0.12em",
-                color: `${CR}0.35)`,
-                fontFamily: "monospace",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {lang === "zh"
-                ? "仅用于姿势检测，不收集任何人脸信息"
-                : "POSE ONLY · NO FACE DATA COLLECTED"}
+
+            {/* privacy note */}
+            <span style={{
+              fontSize: "13px", letterSpacing: "0.08em",
+              color: `${CR}0.28)`,
+              fontFamily: lang === "zh" ? "'ZCOOL XiaoWei', serif" : "'Cormorant Garamond', Georgia, serif",
+              fontWeight: 400, whiteSpace: "nowrap",
+            }}>
+              {lang === "zh" ? "仅用于姿势检测 · 不留存任何数据" : "pose only · no data retained"}
             </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 11 11"
-                style={{ flexShrink: 0, opacity: 0.6 }}
-              >
-                <path
-                  d="M4 8.5 V3 L9 2 V7"
-                  fill="none"
-                  stroke={`${W}1)`}
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+
+            {/* music tip */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              marginTop: "2px",
+              animation: "breathe 4s ease-in-out infinite 1.5s",
+            }}>
+              <svg width="10" height="10" viewBox="0 0 11 11" style={{ flexShrink: 0, opacity: 0.4 }}>
+                <path d="M4 8.5 V3 L9 2 V7" fill="none" stroke={`${W}1)`} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                 <circle cx="3.5" cy="8.8" r="1.1" fill={`${W}1)`} />
                 <circle cx="8.5" cy="7.3" r="1.1" fill={`${W}1)`} />
               </svg>
-              <span
-                style={{
-                  fontSize: "13px",
-                  letterSpacing: "0.1em",
-                  color: `${CR}0.68)`,
-                  fontFamily: "'DM Sans',sans-serif",
-                  fontWeight: 500,
-                  animation: "breathe 4s ease-in-out infinite 1s",
-                }}
-              >
+              <span style={{
+                fontSize: "16px", letterSpacing: "0.06em",
+                color: `${CR}0.42)`,
+                fontFamily: lang === "zh" ? "'ZCOOL XiaoWei', serif" : "'Cormorant Garamond', Georgia, serif",
+                fontWeight: 400,
+              }}>
                 {t("musicTip", lang)}
               </span>
             </div>
