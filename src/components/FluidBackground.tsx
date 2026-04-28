@@ -41,6 +41,7 @@ export default function FluidBackground({
       w = rect.width; h = rect.height;
       canvas.width = w * dpr; canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.filter = "blur(60px)";
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -90,21 +91,11 @@ export default function FluidBackground({
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: "transparent" }}>
-      <svg style={{ position: "absolute", width: 0, height: 0 }}>
-        <defs>
-          <filter id="goo-fluid">
-            <feGaussianBlur stdDeviation="30" />
-            <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" />
-            <feBlend in="SourceGraphic" />
-          </filter>
-        </defs>
-      </svg>
       <canvas
         ref={canvasRef}
         style={{
           width: "100%", height: "100%", display: "block",
-          filter: "url(#goo-fluid) blur(8px)",
-          transform: "scale(1.05)",
+          transform: "scale(1.1)",
         }}
       />
     </div>
