@@ -85,6 +85,7 @@ export function gatekeeperUI(theme: GKTheme): void {
     remove();
     const d = await chrome.storage.local.get("intervalMs");
     const ms = (d["intervalMs"] as number | undefined) ?? 30 * 60_000;
-    await chrome.storage.local.set({ lastResetAt: Date.now() - ms + 5 * 60_000 });
+    const snoozeMs = Math.min(5 * 60_000, ms);
+    await chrome.storage.local.set({ lastResetAt: Date.now() - ms + snoozeMs });
   });
 }

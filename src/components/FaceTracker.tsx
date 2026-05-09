@@ -35,9 +35,8 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
     useEffect(() => {
       const initFaceTracking = async () => {
         try {
-          const vision = await FilesetResolver.forVisionTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
-          );
+          const wasmPath = new URL("/assets/mediapipe/wasm", window.location.href).href;
+          const vision = await FilesetResolver.forVisionTasks(wasmPath);
           const landmarker = await FaceLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath:

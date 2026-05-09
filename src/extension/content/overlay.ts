@@ -5,9 +5,10 @@ import { gatekeeperUI } from "../shared/gatekeeperUI";
 import type { GKTheme } from "../shared/gatekeeperUI";
 
 chrome.runtime.onMessage.addListener(
-  (msg: { type: string; theme?: GKTheme }) => {
+  (msg: { type: string; theme?: GKTheme }, _sender, sendResponse) => {
     if (msg.type === "SHOW_OVERLAY" && msg.theme) {
       gatekeeperUI(msg.theme);
+      sendResponse({});
     }
   },
 );
