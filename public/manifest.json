@@ -4,6 +4,11 @@
   "description": "定时提醒颈部休息，冥想完成后自动关闭",
   "version": "1.0.0",
   "permissions": ["tabs", "storage", "alarms", "scripting"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background/worker.js",
