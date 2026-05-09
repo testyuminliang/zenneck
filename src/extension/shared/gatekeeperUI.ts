@@ -3,6 +3,7 @@ export interface GKTheme {
   CR: string;
   bgBase: string;
   themeKey: string;
+  lang?: string;
 }
 
 // Self-contained — injected into the host page via chrome.scripting.executeScript.
@@ -11,7 +12,7 @@ export function gatekeeperUI(theme: GKTheme): void {
   const OVERLAY_ID = "zenneck-gk";
   if (document.getElementById(OVERLAY_ID)) return;
 
-  const { W, CR, bgBase, themeKey } = theme;
+  const { W, CR, bgBase, themeKey, lang = "zh" } = theme;
 
   function hex(h: string, a: number): string {
     return `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
@@ -65,10 +66,10 @@ export function gatekeeperUI(theme: GKTheme): void {
       .bl:hover { background: ${W}0.07); }
     </style>
     <div class="bd">
-      <span class="t">时间到了</span>
+      <span class="t">${lang === "en" ? "Ready for a break?" : "准备好放松一下了吗？"}</span>
       <div class="g">
-        <button class="bs">开始放松</button>
-        <button class="bl">稍后再说</button>
+        <button class="bs">${lang === "en" ? "Start relaxing" : "开始放松"}</button>
+        <button class="bl">${lang === "en" ? "REMIND LATER" : "稍后再说"}</button>
       </div>
     </div>`;
 

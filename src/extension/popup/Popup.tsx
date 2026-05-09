@@ -15,9 +15,9 @@ function fmtCountdown(ms: number): string {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-function fmtInterval(ms: number): string {
+function fmtInterval(ms: number, en?: boolean): string {
   const m = Math.round(ms / 60_000);
-  if (m < 60) return `${m} 分钟`;
+  if (m < 60) return en ? `${m} min` : `${m} 分钟`;
   const h = Math.floor(m / 60), r = m % 60;
   return r > 0 ? `${h}h ${r}m` : `${h}h`;
 }
@@ -29,6 +29,7 @@ export default function Popup() {
   const [editing, setEditing]         = useState(false);
   const [editMin, setEditMin]         = useState("");
   const [themeKey, setThemeKey]       = useState<ThemeKey>("terracotta");
+  const [lang, setLang]               = useState<"zh" | "en">("zh");
 
   useEffect(() => { load(); }, []);
 
@@ -45,6 +46,7 @@ export default function Popup() {
     try {
       const cfg = JSON.parse(localStorage.getItem("zenneck-config") ?? "{}");
       if (cfg.themeKey) setThemeKey(cfg.themeKey as ThemeKey);
+      if (cfg.lang === "en") setLang("en");
     } catch { /* ignore */ }
   }
 
@@ -108,7 +110,7 @@ export default function Popup() {
           </span>
           {overdue && (
             <span style={{ fontSize: 9, letterSpacing: "0.28em", color: `${W}0.55)`, fontFamily: "monospace" }}>
-              该活动颈部了
+              {lang === "en" ? "TIME TO STRETCH" : "该活动颈部了"}
             </span>
           )}
         </div>
@@ -125,7 +127,7 @@ export default function Popup() {
 
         {/* Interval row */}
         <div style={{ padding: "0 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 10, letterSpacing: "0.08em", color: `${CR}0.4)` }}>提醒间隔</span>
+          <span style={{ fontSize: 10, letterSpacing: "0.08em", color: `${CR}0.4)` }}>{lang === "en" ? "Interval" : "提醒间隔"}</span>
           {editing ? (
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <input
@@ -133,7 +135,7 @@ export default function Popup() {
                 onChange={e => setEditMin(e.target.value)}
                 style={{ width: 48, height: 24, borderRadius: 5, border: `0.5px solid ${W}0.3)`, background: "rgba(255,248,240,0.85)", fontSize: 11, fontFamily: "monospace", textAlign: "center", color: `${CR}0.8)`, outline: "none", padding: "0 4px" }}
               />
-              <span style={{ fontSize: 10, color: `${CR}0.35)`, fontFamily: "monospace" }}>分钟</span>
+              <span style={{ fontSize: 10, color: `${CR}0.35)`, fontFamily: "monospace" }}>{lang === "en" ? "min" : "分钟"}</span>
               <button
                 onClick={() => saveInterval(Math.max(1, parseInt(editMin) || 30))}
                 style={{ height: 24, padding: "0 8px", borderRadius: 5, background: `${W}0.8)`, border: "none", cursor: "pointer", fontSize: 9, letterSpacing: "0.1em", color: "rgba(255,248,240,0.95)", fontFamily: "monospace" }}
@@ -148,7 +150,7 @@ export default function Popup() {
               onClick={() => { setEditing(true); setEditMin(String(Math.round(intervalMs / 60_000))); }}
               style={{ fontSize: 11, letterSpacing: "0.05em", color: `${CR}0.6)`, fontFamily: "monospace", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textDecorationColor: `${CR}0.15)`, padding: 0 }}
             >
-              {fmtInterval(intervalMs)}
+              {fmtInterval(intervalMs, lang === "en")}
             </button>
           )}
         </div>
@@ -172,7 +174,7 @@ export default function Popup() {
             onClick={triggerNow}
             style={{ fontSize: 9, letterSpacing: "0.2em", color: `${W}0.55)`, fontFamily: "monospace", background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
-            立即提醒
+            {lang === "en" ? "REMIND NOW" : "立即提醒"}
           </button>
         </div>
       </div>

@@ -20,6 +20,7 @@ export interface CustomConfig {
   voiceVolume: number;  // 0–1
   customBgmName?: string; // filename shown in UI; actual audio stored in IndexedDB
   themeKey?: ThemeKey;
+  lang?: "zh" | "en";
 }
 
 export interface StepDef {

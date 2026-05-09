@@ -47,7 +47,7 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
     return DEFAULT_CONFIG;
   });
   const [showCustomPanel, setShowCustomPanel] = useState(false);
-  const [lang, setLang] = useState<Lang>("zh");
+  const lang: Lang = customConfig.lang ?? "zh";
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
 
@@ -57,9 +57,10 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
     localStorage.setItem("zenneck-config", JSON.stringify(customConfig));
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
       const themeKey = customConfig.themeKey ?? "terracotta";
+      const lang = customConfig.lang ?? "zh";
       chrome.storage.local.get("settings").then(d => {
         const s = (d["settings"] as object | undefined) ?? {};
-        chrome.storage.local.set({ settings: { ...s, themeKey } });
+        chrome.storage.local.set({ settings: { ...s, themeKey, lang } });
       }).catch(() => {});
     }
   }, [customConfig]);
@@ -324,7 +325,7 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
         onCustomOpen={() => setShowCustomPanel((v) => !v)}
         completionPhase={completionPhase}
         lang={lang}
-        onToggleLang={() => setLang((l) => (l === "zh" ? "en" : "zh"))}
+        onToggleLang={() => setCustomConfig(c => ({ ...c, lang: lang === "zh" ? "en" : "zh" }))}
         cameraActive={cameraActive}
         cameraFailed={cameraFailed}
       />

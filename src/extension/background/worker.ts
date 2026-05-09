@@ -31,8 +31,10 @@ async function getZenTabId(): Promise<number | undefined> {
 
 async function getTheme(): Promise<GKTheme> {
   const d = await chrome.storage.local.get("settings");
-  const themeKey = ((d["settings"] as { themeKey?: string } | undefined)?.themeKey) ?? "terracotta";
-  return { ...(THEMES[themeKey] ?? THEMES["terracotta"]), themeKey };
+  const s = d["settings"] as { themeKey?: string; lang?: string } | undefined;
+  const themeKey = s?.themeKey ?? "terracotta";
+  const lang = s?.lang ?? "zh";
+  return { ...(THEMES[themeKey] ?? THEMES["terracotta"]), themeKey, lang };
 }
 
 // ── Core ─────────────────────────────────────────────────────────────────────
