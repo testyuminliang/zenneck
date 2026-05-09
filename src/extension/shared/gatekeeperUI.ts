@@ -30,9 +30,9 @@ export function gatekeeperUI(theme: GKTheme): void {
       }
       .bd {
         position: fixed; inset: 0;
-        background: ${hex(bgBase, 0.92)};
-        backdrop-filter: blur(22px);
-        -webkit-backdrop-filter: blur(22px);
+        background: ${hex(bgBase, 0.45)};
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
         animation: gk-in 0.45s cubic-bezier(.34,1.2,.64,1) both;
@@ -74,7 +74,15 @@ export function gatekeeperUI(theme: GKTheme): void {
 
   document.documentElement.appendChild(host);
 
-  const remove = () => host.remove();
+  const remove = () => {
+    host.remove();
+    chrome.runtime.onMessage.removeListener(msgListener);
+  };
+
+  const msgListener = (msg: { type: string }) => {
+    if (msg.type === "REMOVE_OVERLAY") remove();
+  };
+  chrome.runtime.onMessage.addListener(msgListener);
 
   (shadow.querySelector(".bs") as HTMLButtonElement).addEventListener("click", () => {
     remove();

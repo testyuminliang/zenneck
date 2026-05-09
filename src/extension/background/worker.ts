@@ -37,6 +37,8 @@ async function getTheme(): Promise<GKTheme> {
 
 // ── Core ─────────────────────────────────────────────────────────────────────
 
+let overlayTabId: number | undefined;
+
 async function openZenDirect(themeKey: string): Promise<void> {
   // Bring existing zen tab to front if already open
   const existingId = await getZenTabId();
@@ -98,8 +100,10 @@ async function injectGatekeeper(): Promise<void> {
       });
     } catch {
       // Can't inject into this tab (chrome://, PDF, etc.) — silently skip
+      return;
     }
   }
+  overlayTabId = tab.id;
 }
 
 async function maybeInjectGatekeeper(): Promise<void> {
@@ -133,6 +137,14 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "tick") return;
+  await maybeInjectGatekeeper();
+});
+
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  if (overlayTabId !== undefined && overlayTabId !== tabId) {
+    chrome.tabs.sendMessage(overlayTabId, { type: "REMOVE_OVERLAY" }).catch(() => {});
+    overlayTabId = undefined;
+  }
   await maybeInjectGatekeeper();
 });
 

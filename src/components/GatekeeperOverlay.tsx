@@ -28,8 +28,8 @@ export default function GatekeeperOverlay({ onMeditate, onLater, themeKey }: Pro
 
       <div style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: hexToRgba(bgBase, 0.92),
-        backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
+        background: hexToRgba(bgBase, 0.45),
+        backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         animation: "gk-in 0.45s cubic-bezier(.34,1.2,.64,1) both",
       }}>
