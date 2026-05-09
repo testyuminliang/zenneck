@@ -11,7 +11,6 @@ export default defineConfig({
         zen:                resolve(__dirname, 'zen.html'),
         popup:              resolve(__dirname, 'popup.html'),
         'background/worker': resolve(__dirname, 'src/extension/background/worker.ts'),
-        'content/overlay':  resolve(__dirname, 'src/extension/content/overlay.ts'),
       },
       output: {
         entryFileNames: (chunk) =>

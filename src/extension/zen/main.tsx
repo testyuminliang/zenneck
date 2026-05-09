@@ -4,8 +4,9 @@ import App from "../../App";
 import type { ThemeKey } from "../../types";
 import "../../index.css";
 
-const p        = new URLSearchParams(window.location.search);
-const themeKey = (p.get("theme") ?? "terracotta") as ThemeKey;
+const p          = new URLSearchParams(window.location.search);
+const themeKey   = (p.get("theme") ?? "terracotta") as ThemeKey;
+const isOverlay  = p.get("mode") === "overlay";
 
 // Only set themeKey in localStorage if not already saved (user's choice wins over URL param)
 try {
@@ -19,7 +20,7 @@ try {
 const hasChromeStorage = typeof chrome !== "undefined" && !!chrome.storage?.local;
 
 // Keep chrome.storage.local in sync so next alarm uses the correct theme
-if (hasChromeStorage) {
+if (hasChromeStorage && !isOverlay) {
   chrome.storage.local.get("settings").then(d => {
     const s = (d["settings"] as object | undefined) ?? {};
     chrome.storage.local.set({ settings: { ...s, themeKey } });
@@ -38,14 +39,25 @@ async function closeThisTab() {
 
 function ZenEntry() {
   const handleComplete = async () => {
-    if (hasChromeStorage) {
+    if (!hasChromeStorage) return;
+    if (isOverlay) {
+      // Tell background to reset timer and remove the iframe
+      await chrome.runtime.sendMessage({ type: "ZEN_COMPLETE" });
+    } else {
       await chrome.storage.local.set({ lastResetAt: Date.now() });
       await chrome.storage.local.remove("zenTabId");
+      setTimeout(closeThisTab, 2200);
     }
-    setTimeout(closeThisTab, 2200);
   };
 
-  return <App onComplete={handleComplete} />;
+  return (
+    <>
+      {isOverlay && (
+        <style>{`html, body, #root { background: transparent !important; }`}</style>
+      )}
+      <App onComplete={handleComplete} overlayMode={isOverlay} />
+    </>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

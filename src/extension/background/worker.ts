@@ -41,8 +41,8 @@ async function getTheme(): Promise<GKTheme> {
 
 let overlayTabId: number | undefined;
 
-async function openZenDirect(themeKey: string): Promise<void> {
-  // Bring existing zen tab to front if already open
+async function openZenOverlay(themeKey: string, sourceTabId: number): Promise<void> {
+  // If zen overlay is already running on some tab, bring that tab to front
   const existingId = await getZenTabId();
   if (existingId !== undefined) {
     try {
@@ -54,31 +54,70 @@ async function openZenDirect(themeKey: string): Promise<void> {
     }
   }
 
-  const url = new URL(chrome.runtime.getURL("zen.html"));
-  url.searchParams.set("theme", themeKey);
-  const tab = await chrome.tabs.create({ url: url.toString() });
-  if (tab.id) await chrome.storage.local.set({ zenTabId: tab.id });
+  overlayTabId = undefined; // gatekeeper removed itself on click
+
+  const d = await chrome.storage.local.get("settings");
+  const lang = (d["settings"] as { lang?: string } | undefined)?.lang ?? "zh";
+  const zenUrl = chrome.runtime.getURL(`zen.html?mode=overlay&theme=${themeKey}&lang=${lang}`);
+
+  await chrome.scripting.executeScript({
+    target: { tabId: sourceTabId },
+    func: (url: string) => {
+      const ID = "zenneck-zen";
+      if (document.getElementById(ID)) return;
+      const frame = document.createElement("iframe");
+      frame.id = ID;
+      frame.src = url;
+      frame.allow = "camera; microphone";
+      frame.setAttribute("allowtransparency", "true");
+      Object.assign(frame.style, {
+        position: "fixed", inset: "0",
+        width: "100vw", height: "100vh",
+        border: "none", background: "transparent",
+        zIndex: "2147483646",
+      });
+      document.documentElement.appendChild(frame);
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          document.getElementById(ID)?.remove();
+          document.removeEventListener("keydown", onKey);
+        }
+      };
+      document.addEventListener("keydown", onKey);
+    },
+    args: [zenUrl],
+  });
+
+  await chrome.storage.local.set({ zenTabId: sourceTabId });
+}
+
+async function removeZenOverlay(tabId: number): Promise<void> {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => { document.getElementById("zenneck-zen")?.remove(); },
+  }).catch(() => {});
 }
 
 async function findTargetTab(): Promise<chrome.tabs.Tab | undefined> {
-  // Query all active tabs across all windows — popup being the "lastFocusedWindow"
-  // means lastFocusedWindow: true often returns nothing useful when popup is open.
+  // Prefer the last focused window's active tab (most accurate when alarm fires)
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab?.url?.match(/^https?:/)) return tab;
+  } catch {}
+  // Cross-window fallback — handles multi-window / popup-focused scenarios
   const active = await chrome.tabs.query({ active: true });
-  const normal = active.find(t => t.url?.match(/^https?:/));
-  if (normal) return normal;
-  // Fall back to any open http/https tab (even if not currently active)
-  const all = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
-  return all[0];
+  return active.find(t => t.url?.match(/^https?:/));
+  // Intentionally no fallback to non-active tabs: injecting into a background tab
+  // the user can't see is worse than skipping — onActivated will catch it on next switch.
 }
 
 async function injectGatekeeper(): Promise<void> {
-  // Don't inject if zen tab is already open
+  // Don't inject if zen overlay is already running
   const existingId = await getZenTabId();
   if (existingId !== undefined) {
     try {
       await chrome.tabs.get(existingId);
-      await chrome.tabs.update(existingId, { active: true });
-      return;
+      return; // zen is running — skip gatekeeper, don't force tab switch
     } catch {
       await chrome.storage.local.remove("zenTabId");
     }
@@ -90,20 +129,14 @@ async function injectGatekeeper(): Promise<void> {
   const theme = await getTheme();
 
   try {
-    // Prefer sendMessage to the always-registered content script
-    await chrome.tabs.sendMessage(tab.id, { type: "SHOW_OVERLAY", theme });
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: gatekeeperUI,
+      args: [theme],
+    });
   } catch {
-    // Content script not yet injected in this tab — fall back to executeScript
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: gatekeeperUI,
-        args: [theme],
-      });
-    } catch {
-      // Can't inject into this tab (chrome://, PDF, etc.) — silently skip
-      return;
-    }
+    // Can't inject into this tab (chrome://, PDF, etc.) — silently skip
+    return;
   }
   overlayTabId = tab.id;
 }
@@ -166,7 +199,12 @@ chrome.runtime.onMessage.addListener(
     const done = () => sendResponse({});
 
     if (msg.type === "OPEN_ZEN") {
-      openZenDirect(msg.themeKey ?? "terracotta").then(done).catch(done);
+      const tabId = _sender.tab?.id;
+      if (tabId !== undefined) {
+        openZenOverlay(msg.themeKey ?? "terracotta", tabId).then(done).catch(done);
+      } else {
+        done();
+      }
       return true;
     }
 
@@ -176,10 +214,16 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (msg.type === "ZEN_COMPLETE") {
-      Promise.all([
-        chrome.storage.local.set({ lastResetAt: Date.now() }),
-        chrome.storage.local.remove("zenTabId"),
-      ]).then(done).catch(done);
+      (async () => {
+        const d = await chrome.storage.local.get("zenTabId");
+        const tabId = d["zenTabId"] as number | undefined;
+        await Promise.all([
+          chrome.storage.local.set({ lastResetAt: Date.now() }),
+          chrome.storage.local.remove("zenTabId"),
+        ]);
+        if (tabId !== undefined) await removeZenOverlay(tabId);
+        done();
+      })().catch(done);
       return true;
     }
   },

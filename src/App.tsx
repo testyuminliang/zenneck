@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: CustomConfig = {
   voiceVolume: 0.75,
 };
 
-function App({ onComplete }: { onComplete?: () => void } = {}) {
+function App({ onComplete, overlayMode }: { onComplete?: () => void; overlayMode?: boolean } = {}) {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({
     yaw: 0,
     pitch: 0,
@@ -289,15 +289,17 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
 
   return (
     <div className="app-container" onClick={handleFirstInteraction}>
-      <FluidBackground
-        palette={theme.bgPalette}
-        baseColor={theme.bgBase}
-        headOffset={
-          !guidedMode
-            ? { x: headRotation.yaw / 20, y: -headRotation.pitch / 20 }
-            : undefined
-        }
-      />
+      {!overlayMode && (
+        <FluidBackground
+          palette={theme.bgPalette}
+          baseColor={theme.bgBase}
+          headOffset={
+            !guidedMode
+              ? { x: headRotation.yaw / 20, y: -headRotation.pitch / 20 }
+              : undefined
+          }
+        />
+      )}
 
       <MeditationOverlay
         progress={meditationProgress}
