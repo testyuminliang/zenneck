@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: CustomConfig = {
   voiceVolume: 0.75,
 };
 
-function App() {
+function App({ onComplete }: { onComplete?: () => void } = {}) {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({
     yaw: 0,
     pitch: 0,
@@ -51,9 +51,17 @@ function App() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
 
-  // Persist config changes to localStorage
+  // Persist config changes to localStorage; also keep chrome.storage.local in sync
+  // so the background worker uses the correct theme for the next alarm.
   useEffect(() => {
     localStorage.setItem("zenneck-config", JSON.stringify(customConfig));
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const themeKey = customConfig.themeKey ?? "terracotta";
+      chrome.storage.local.get("settings").then(d => {
+        const s = (d["settings"] as object | undefined) ?? {};
+        chrome.storage.local.set({ settings: { ...s, themeKey } });
+      }).catch(() => {});
+    }
   }, [customConfig]);
 
   const theme = getTheme(customConfig.themeKey);
@@ -251,6 +259,7 @@ function App() {
       resetCompleted();
       setGuidedMode(false);
       setCompletionPhase("emerging");
+      onComplete?.();
     }, 5500);
     const t3 = setTimeout(() => setCompletionPhase("idle"), 11000);
     return () => [t1, t2, t3].forEach(clearTimeout);
