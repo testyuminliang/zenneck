@@ -53,6 +53,20 @@ export function useSequence(headRotation: HeadRotation, amplitudeScale = 1.0, st
   useEffect(() => {
     const tick = (now: number) => {
       if (!enabledRef.current) { rafRef.current = requestAnimationFrame(tick); return; }
+      // Step list may have shrunk (user unchecked a step mid-session); clamp index back to 0.
+      if (stepIndexRef.current >= stepsRef.current.length) {
+        stepIndexRef.current = 0;
+        holdStartRef.current = null;
+        holdAccumRef.current = 0;
+        resonanceStartRef.current = null;
+        pauseStartRef.current = null;
+        holdProgressRef.current = 0;
+        setStepIndex(0);
+        setHoldProgress(0);
+        setResonanceProgress(0);
+        setInHoldZone(false);
+        syncPhase("guide");
+      }
       const step = stepsRef.current[stepIndexRef.current];
       const rot = rotRef.current;
       const value = rot[step.axis];
