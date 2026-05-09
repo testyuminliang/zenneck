@@ -62,16 +62,8 @@ export default function Popup() {
     setLastResetAt(t);
   }
 
-  async function triggerNow() {
-    // Wait for background to inject the overlay before closing the popup.
-    // If no response within 800ms, close anyway.
-    await new Promise<void>(resolve => {
-      const timer = setTimeout(resolve, 800);
-      chrome.runtime.sendMessage({ type: "INJECT_GATEKEEPER" }, () => {
-        clearTimeout(timer);
-        resolve();
-      });
-    });
+  function triggerNow() {
+    chrome.runtime.sendMessage({ type: "INJECT_GATEKEEPER" });
     window.close();
   }
 

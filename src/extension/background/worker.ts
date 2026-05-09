@@ -136,6 +136,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   await maybeInjectGatekeeper();
 });
 
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const zenTabId = await getZenTabId();
+  if (tabId !== zenTabId) return;
+  await Promise.all([
+    chrome.storage.local.set({ lastResetAt: Date.now() }),
+    chrome.storage.local.remove("zenTabId"),
+  ]);
+});
+
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(

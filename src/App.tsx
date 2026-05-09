@@ -353,7 +353,7 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
           position: "fixed",
           inset: 0,
           zIndex: 450,
-          background: "#f5ede4",
+          background: theme.bgBase,
           opacity:
             completionPhase === "clearing"
               ? 0.92
@@ -401,7 +401,7 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
           style={{
             fontSize: "22px",
             letterSpacing: "0.22em",
-            color: "rgba(154,88,64,0.82)",
+            color: `${theme.CR}0.82)`,
             fontFamily: "'DM Serif Display', serif",
             fontStyle: "italic",
           }}
@@ -412,7 +412,7 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
           style={{
             fontSize: "8px",
             letterSpacing: "0.4em",
-            color: "rgba(154,88,64,0.4)",
+            color: `${theme.CR}0.4)`,
             fontFamily: "monospace",
           }}
         >
