@@ -8,6 +8,7 @@ export interface CustomPreset {
 }
 
 export type ThemeKey = "terracotta" | "lavender" | "sage" | "ocean" | "rose";
+export type Lang = "zh" | "en";
 
 export interface CustomConfig {
   presets: [CustomPreset, CustomPreset, CustomPreset];
@@ -20,6 +21,7 @@ export interface CustomConfig {
   voiceVolume: number;  // 0–1
   customBgmName?: string; // filename shown in UI; actual audio stored in IndexedDB
   themeKey?: ThemeKey;
+  lang?: Lang;
 }
 
 export interface StepDef {

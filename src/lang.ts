@@ -1,4 +1,5 @@
-export type Lang = "zh" | "en";
+import type { Lang } from "./types";
+export type { Lang };
 
 export const UI = {
   start: { zh: "开始", en: "Begin" },

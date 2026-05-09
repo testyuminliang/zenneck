@@ -6,8 +6,7 @@ import FluidBackground from "./components/FluidBackground";
 import MeditationOverlay from "./components/MeditationOverlay";
 import { useSequence, STEPS } from "./hooks/useSequence";
 import { useAudio } from "./hooks/useAudio";
-import type { HeadRotation, CustomConfig } from "./types";
-import type { Lang } from "./lang";
+import type { HeadRotation, CustomConfig, Lang } from "./types";
 import { t } from "./lang";
 import { getTheme } from "./themes";
 import "./App.css";
@@ -47,7 +46,7 @@ function App() {
     return DEFAULT_CONFIG;
   });
   const [showCustomPanel, setShowCustomPanel] = useState(false);
-  const [lang, setLang] = useState<Lang>("zh");
+  const lang: Lang = customConfig.lang ?? "zh";
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
 
@@ -315,7 +314,7 @@ function App() {
         onCustomOpen={() => setShowCustomPanel((v) => !v)}
         completionPhase={completionPhase}
         lang={lang}
-        onToggleLang={() => setLang((l) => (l === "zh" ? "en" : "zh"))}
+        onToggleLang={() => setCustomConfig((c) => ({ ...c, lang: lang === "zh" ? "en" : "zh" }))}
         cameraActive={cameraActive}
         cameraFailed={cameraFailed}
       />
