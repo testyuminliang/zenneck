@@ -10,6 +10,7 @@ export default defineConfig({
         main:               resolve(__dirname, 'index.html'),
         zen:                resolve(__dirname, 'zen.html'),
         popup:              resolve(__dirname, 'popup.html'),
+        offscreen:          resolve(__dirname, 'offscreen.html'),
         'background/worker': resolve(__dirname, 'src/extension/background/worker.ts'),
         'content/overlay':  resolve(__dirname, 'src/extension/content/overlay.ts'),
       },

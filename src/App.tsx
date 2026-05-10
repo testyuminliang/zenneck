@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: CustomConfig = {
   voiceVolume: 0.75,
 };
 
-function App({ onComplete, bgmOffset = 0 }: { onComplete?: () => void; bgmOffset?: number } = {}) {
+function App({ onComplete }: { onComplete?: () => void } = {}) {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({
     yaw: 0,
     pitch: 0,
@@ -107,14 +107,10 @@ function App({ onComplete, bgmOffset = 0 }: { onComplete?: () => void; bgmOffset
     setVoiceVolume,
   } = useAudio();
 
-  // BGM offset: consumed once on the very first startBGM call, reset to 0 afterwards
-  const bgmOffsetRef = useRef(bgmOffset);
-
   // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
   useEffect(() => {
     if (customConfig.bgmEnabled) {
-      startBGM(bgmOffsetRef.current);
-      bgmOffsetRef.current = 0;
+      startBGM(0);
     } else stopBGM();
     return () => stopBGM();
   }, [customConfig.bgmEnabled, startBGM, stopBGM]);
@@ -126,8 +122,7 @@ function App({ onComplete, bgmOffset = 0 }: { onComplete?: () => void; bgmOffset
     audioUnlockedRef.current = true;
     resumeCtx().then(() => {
       if (customConfig.bgmEnabled) {
-        startBGM(bgmOffsetRef.current);
-        bgmOffsetRef.current = 0;
+        startBGM(0);
       }
     });
   }, [cameraActive]);
@@ -292,8 +287,7 @@ function App({ onComplete, bgmOffset = 0 }: { onComplete?: () => void; bgmOffset
     audioUnlockedRef.current = true;
     resumeCtx().then(() => {
       if (customConfig.bgmEnabled) {
-        startBGM(bgmOffsetRef.current);
-        bgmOffsetRef.current = 0;
+        startBGM(0);
       }
     });
   }

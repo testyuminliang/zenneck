@@ -3,7 +3,7 @@
   "name": "ZenNeck",
   "description": "定时提醒颈部休息，冥想完成后自动关闭",
   "version": "1.0.0",
-  "permissions": ["tabs", "storage", "alarms", "scripting"],
+  "permissions": ["tabs", "storage", "alarms", "scripting", "offscreen"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

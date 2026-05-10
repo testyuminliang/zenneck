@@ -39,6 +39,23 @@ async function getTheme(): Promise<GKTheme> {
   return { ...(THEMES[themeKey] ?? THEMES["terracotta"]), themeKey, lang };
 }
 
+// ── Offscreen document — persistent BGM player ───────────────────────────────
+
+async function ensureOffscreen(): Promise<void> {
+  const contexts = await chrome.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT"] });
+  if (contexts.length > 0) return;
+  await chrome.offscreen.createDocument({
+    url: chrome.runtime.getURL("offscreen.html"),
+    reasons: ["AUDIO_PLAYBACK" as chrome.offscreen.Reason],
+    justification: "Persistent BGM across gatekeeper, zen, and completion phases",
+  });
+}
+
+async function sendBgmCmd(params: { cmd: string; value?: number }): Promise<void> {
+  await ensureOffscreen();
+  chrome.runtime.sendMessage({ type: "BGM_CMD", ...params }).catch(() => {});
+}
+
 // ── Core ─────────────────────────────────────────────────────────────────────
 
 let overlayTabId: number | undefined;
@@ -63,12 +80,9 @@ async function openZenDirect(themeKey: string): Promise<void> {
 }
 
 async function findTargetTab(excludeTabId?: number): Promise<chrome.tabs.Tab | undefined> {
-  // Query all active tabs across all windows — popup being the "lastFocusedWindow"
-  // means lastFocusedWindow: true often returns nothing useful when popup is open.
   const active = await chrome.tabs.query({ active: true });
   const normal = active.find(t => t.url?.match(/^https?:/) && t.id !== excludeTabId);
   if (normal) return normal;
-  // Fall back to any open http/https tab (even if not currently active)
   const all = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
   return all.find(t => t.id !== excludeTabId);
 }
@@ -112,10 +126,8 @@ async function injectGatekeeper(): Promise<void> {
   const theme = await getTheme();
 
   try {
-    // Prefer sendMessage to the always-registered content script
     await chrome.tabs.sendMessage(tab.id, { type: "SHOW_OVERLAY", theme });
   } catch {
-    // Content script not yet injected in this tab — fall back to executeScript
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -123,11 +135,13 @@ async function injectGatekeeper(): Promise<void> {
         args: [theme],
       });
     } catch {
-      // Can't inject into this tab (chrome://, PDF, etc.) — silently skip
       return;
     }
   }
   overlayTabId = tab.id;
+
+  // Start persistent BGM in offscreen document
+  sendBgmCmd({ cmd: "play" }).catch(() => {});
 }
 
 async function maybeInjectGatekeeper(): Promise<void> {
@@ -167,6 +181,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   if (overlayTabId !== undefined && overlayTabId !== tabId) {
     chrome.tabs.sendMessage(overlayTabId, { type: "REMOVE_OVERLAY" }).catch(() => {});
+    sendBgmCmd({ cmd: "fade_out" }).catch(() => {});
     overlayTabId = undefined;
   }
   await maybeInjectGatekeeper();
@@ -178,13 +193,14 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   await Promise.all([
     chrome.storage.local.set({ lastResetAt: Date.now() }),
     chrome.storage.local.remove("zenTabId"),
+    sendBgmCmd({ cmd: "fade_out" }),
   ]);
 });
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
-  (msg: { type: string; themeKey?: string }, sender, sendResponse) => {
+  (msg: { type: string; themeKey?: string; cmd?: string; value?: number }, sender, sendResponse) => {
     const done = () => sendResponse({});
 
     if (msg.type === "OPEN_ZEN") {
@@ -198,16 +214,33 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (msg.type === "ZEN_COMPLETE") {
+      const senderTabId = sender.tab?.id;
       Promise.all([
         chrome.storage.local.set({ lastResetAt: Date.now() }),
         chrome.storage.local.remove("zenTabId"),
-      ]).then(done).catch(done);
+        showCompletion(senderTabId),
+      ]).then(() => {
+        // Fade BGM out after completion overlay has been visible briefly
+        setTimeout(() => sendBgmCmd({ cmd: "fade_out" }).catch(() => {}), 1500);
+        done();
+      }).catch(done);
       return true;
     }
 
-    if (msg.type === "SHOW_COMPLETION") {
-      const senderTabId = sender.tab?.id;
-      showCompletion(senderTabId).then(done).catch(done);
+    if (msg.type === "GK_SNOOZED") {
+      sendBgmCmd({ cmd: "fade_out" }).catch(() => {});
+      done();
+      return false;
+    }
+
+    // ZEN_BGM_CMD: forwarded from zen page — relay to offscreen document.
+    // (Extension pages can reach offscreen directly via runtime.sendMessage, but we
+    // route through background so ensureOffscreen() is always called first.)
+    if (msg.type === "ZEN_BGM_CMD") {
+      ensureOffscreen().then(() => {
+        chrome.runtime.sendMessage({ type: "BGM_CMD", cmd: msg.cmd, value: msg.value }).catch(() => {});
+        done();
+      }).catch(done);
       return true;
     }
   },

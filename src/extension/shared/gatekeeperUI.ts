@@ -75,41 +75,7 @@ export function gatekeeperUI(theme: GKTheme): void {
 
   document.documentElement.appendChild(host);
 
-  // ── BGM ───────────────────────────────────────────────────────────
-  let bgmEl: HTMLAudioElement | null = null;
-  (function startBgm() {
-    try {
-      chrome.storage.local.set({ zenneckBgmStartedAt: Date.now() });
-      const url = chrome.runtime.getURL("audio/default-bgm.mp3");
-      const el = new Audio(url);
-      el.loop = true;
-      el.volume = 0;
-      bgmEl = el;
-      el.play().catch(() => { bgmEl = null; });
-      let v = 0;
-      const id = setInterval(() => {
-        if (!bgmEl) { clearInterval(id); return; }
-        v = Math.min(v + 0.04, 0.45);
-        el.volume = v;
-        if (v >= 0.45) clearInterval(id);
-      }, 80);
-    } catch { /* no audio */ }
-  })();
-
-  function stopBgm() {
-    const el = bgmEl;
-    if (!el) return;
-    bgmEl = null;
-    let v = el.volume;
-    const id = setInterval(() => {
-      v = Math.max(v - 0.05, 0);
-      el.volume = v;
-      if (v <= 0) { clearInterval(id); try { el.pause(); } catch { /* ok */ } }
-    }, 80);
-  }
-
   const remove = () => {
-    stopBgm();
     host.remove();
     chrome.runtime.onMessage.removeListener(msgListener);
   };
@@ -126,6 +92,7 @@ export function gatekeeperUI(theme: GKTheme): void {
 
   (shadow.querySelector(".bl") as HTMLButtonElement).addEventListener("click", async () => {
     remove();
+    chrome.runtime.sendMessage({ type: "GK_SNOOZED" }).catch(() => {});
     const d = await chrome.storage.local.get("intervalMs");
     const ms = (d["intervalMs"] as number | undefined) ?? 30 * 60_000;
     const snoozeMs = Math.min(5 * 60_000, ms);

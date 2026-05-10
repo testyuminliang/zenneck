@@ -73,66 +73,15 @@ export function completionUI(theme: CompletionTheme): void {
   document.documentElement.appendChild(host);
   const bd = shadow.querySelector(".bd") as HTMLElement;
 
-  // ── Audio ─────────────────────────────────────────────────────────
-  let audioEl: HTMLAudioElement | null = null;
-
-  function startAudio() {
-    if (audioEl) return;
-    try {
-      const url = chrome.runtime.getURL("audio/default-bgm.mp3");
-      const el = new Audio(url);
-      el.loop = true;
-      el.volume = 0;
-      audioEl = el;
-
-      const doPlay = () => {
-        el.play().catch(() => { audioEl = null; });
-        let v = 0;
-        const id = setInterval(() => {
-          if (!audioEl) { clearInterval(id); return; }
-          v = Math.min(v + 0.04, 0.45);
-          el.volume = v;
-          if (v >= 0.45) clearInterval(id);
-        }, 80);
-      };
-
-      // Seek to where the BGM currently is (sync across gatekeeper → zen → completion)
-      el.addEventListener("canplay", () => {
-        chrome.storage.local.get("zenneckBgmStartedAt").then(d => {
-          const startedAt = d["zenneckBgmStartedAt"] as number | undefined;
-          if (startedAt && el.duration) {
-            const elapsed = (Date.now() - startedAt) / 1000;
-            el.currentTime = elapsed % el.duration;
-          }
-          doPlay();
-        }).catch(doPlay);
-      }, { once: true });
-    } catch { /* no audio */ }
-  }
-
-  function fadeOutAudio() {
-    const el = audioEl;
-    if (!el) return;
-    audioEl = null;
-    let v = el.volume;
-    const id = setInterval(() => {
-      v = Math.max(v - 0.04, 0);
-      el.volume = v;
-      if (v <= 0) { clearInterval(id); try { el.pause(); } catch { /* ok */ } }
-    }, 80);
-  }
-
   // ── Lifecycle ─────────────────────────────────────────────────────
   function show() {
     requestAnimationFrame(() => bd.classList.add("show"));
-    startAudio();
     setTimeout(dismiss, 3500);
   }
 
   function dismiss() {
     bd.classList.remove("show");
     bd.classList.add("out");
-    fadeOutAudio();
     setTimeout(() => { try { host.remove(); } catch { /* ok */ } }, 1600);
   }
 
