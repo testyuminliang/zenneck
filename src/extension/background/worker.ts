@@ -94,6 +94,9 @@ async function showCompletion(excludeTabId?: number): Promise<void> {
 
   const completionTheme: CompletionTheme = { W: theme.W, CR: theme.CR, bgBase: theme.bgBase, lang: theme.lang };
 
+  // Switch user to target tab so they see the overlay when zen tab closes
+  chrome.tabs.update(tab.id, { active: true }).catch(() => {});
+
   try {
     await chrome.tabs.sendMessage(tab.id, { type: "SHOW_COMPLETION", theme: completionTheme });
   } catch {
@@ -151,26 +154,40 @@ async function maybeInjectGatekeeper(): Promise<void> {
 
 // ── Alarm ─────────────────────────────────────────────────────────────────────
 
-function ensureAlarm() {
-  chrome.alarms.get("tick").then(a => {
-    if (!a) chrome.alarms.create("tick", { periodInMinutes: 1 });
+// Schedule the alarm to fire as close as possible to lastResetAt + intervalMs,
+// with a 1-minute repeating fallback in case of clock drift or missed fires.
+async function rescheduleAlarm(): Promise<void> {
+  const [lastResetAt, intervalMs] = await Promise.all([getLastResetAt(), getIntervalMs()]);
+  const delayMs = Math.max(0, lastResetAt + intervalMs - Date.now());
+  await chrome.alarms.clear("tick");
+  chrome.alarms.create("tick", {
+    delayInMinutes: Math.max(delayMs / 60_000, 1 / 60),  // at least ~1s
+    periodInMinutes: 1,
   });
 }
 
-ensureAlarm();
+rescheduleAlarm();
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get("lastResetAt").then(d => {
     if (!d["lastResetAt"]) chrome.storage.local.set({ lastResetAt: Date.now() });
+    else rescheduleAlarm();
   });
-  chrome.alarms.create("tick", { periodInMinutes: 1 });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   chrome.storage.local.get("lastResetAt").then(d => {
     if (!d["lastResetAt"]) chrome.storage.local.set({ lastResetAt: Date.now() });
+    else rescheduleAlarm();
   });
-  ensureAlarm();
+});
+
+// Reschedule precisely whenever lastResetAt or intervalMs changes (from any context)
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  if ("lastResetAt" in changes || "intervalMs" in changes) {
+    rescheduleAlarm().catch(() => {});
+  }
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -193,7 +210,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   await Promise.all([
     chrome.storage.local.set({ lastResetAt: Date.now() }),
     chrome.storage.local.remove("zenTabId"),
-    sendBgmCmd({ cmd: "fade_out" }),
+    sendBgmCmd({ cmd: "stop" }),  // manual close → immediate stop, not fade
   ]);
 });
 
@@ -204,6 +221,8 @@ chrome.runtime.onMessage.addListener(
     const done = () => sendResponse({});
 
     if (msg.type === "OPEN_ZEN") {
+      // Clear overlayTabId so tabs.onActivated doesn't fade out BGM when zen tab opens
+      overlayTabId = undefined;
       openZenDirect(msg.themeKey ?? "terracotta").then(done).catch(done);
       return true;
     }
@@ -219,11 +238,9 @@ chrome.runtime.onMessage.addListener(
         chrome.storage.local.set({ lastResetAt: Date.now() }),
         chrome.storage.local.remove("zenTabId"),
         showCompletion(senderTabId),
-      ]).then(() => {
-        // Fade BGM out after completion overlay has been visible briefly
-        setTimeout(() => sendBgmCmd({ cmd: "fade_out" }).catch(() => {}), 1500);
-        done();
-      }).catch(done);
+        // Pass delay to offscreen — service worker setTimeout is not reliable
+        sendBgmCmd({ cmd: "fade_out", value: 1000 }),
+      ]).then(done).catch(done);
       return true;
     }
 

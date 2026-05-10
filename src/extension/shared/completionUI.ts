@@ -24,49 +24,37 @@ export function completionUI(theme: CompletionTheme): void {
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      @keyframes co-in {
-        from { opacity: 0; transform: translateY(-5px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@1&display=swap');
       .bd {
         position: fixed; inset: 0;
-        background: ${hexToRgba(bgBase, 0.6)};
-        backdrop-filter: blur(32px);
-        -webkit-backdrop-filter: blur(32px);
+        background: ${hexToRgba(bgBase, 1)};
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
         gap: 10px;
-        opacity: 0;
-        transition: opacity 1.5s ease;
-      }
-      .bd.show {
-        opacity: 1;
-        animation: co-in 0.9s cubic-bezier(.25,.8,.25,1) both;
       }
       .bd.out {
-        animation: none !important;
-        opacity: 0 !important;
-        transition: opacity 1.4s ease !important;
+        opacity: 0;
+        transition: opacity 0.9s ease;
       }
       .title {
         font-size: 22px;
-        font-family: Georgia, 'Times New Roman', serif;
+        font-family: 'DM Serif Display', serif;
         font-style: italic;
-        color: ${CR}0.85);
-        letter-spacing: 0.04em;
+        color: ${CR}0.82);
+        letter-spacing: 0.22em;
         user-select: none;
       }
       .sub {
-        font-size: 9px;
+        font-size: 8px;
         letter-spacing: 0.4em;
-        color: ${CR}0.35);
+        color: ${CR}0.4);
         font-family: monospace;
         user-select: none;
       }
     </style>
     <div class="bd">
-      <span class="title">${lang === "en" ? "Well done." : "练习完成。"}</span>
-      <span class="sub">SESSION COMPLETE</span>
+      <span class="title">${lang === "en" ? "Go for a walk. See you soon." : "去走走吧，一会见。"}</span>
+      <span class="sub">TAKE YOUR TIME</span>
     </div>
   `;
 
@@ -75,14 +63,12 @@ export function completionUI(theme: CompletionTheme): void {
 
   // ── Lifecycle ─────────────────────────────────────────────────────
   function show() {
-    requestAnimationFrame(() => bd.classList.add("show"));
-    setTimeout(dismiss, 3500);
+    setTimeout(dismiss, 2200);
   }
 
   function dismiss() {
-    bd.classList.remove("show");
     bd.classList.add("out");
-    setTimeout(() => { try { host.remove(); } catch { /* ok */ } }, 1600);
+    setTimeout(() => { try { host.remove(); } catch { /* ok */ } }, 950);
   }
 
   // Defer until tab is visible (tab may be in background when injected)

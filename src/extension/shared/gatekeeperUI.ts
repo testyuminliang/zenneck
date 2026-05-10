@@ -64,8 +64,20 @@ export function gatekeeperUI(theme: GKTheme): void {
         transition: all .2s; outline: none;
       }
       .bl:hover { background: ${W}0.07); }
+      .lgtg {
+        position: absolute; top: 20px; right: 20px;
+        width: 36px; height: 36px; border-radius: 50%;
+        background: rgba(255,248,240,0.55);
+        border: 0.5px solid ${W}0.2);
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        font-size: 9px; letter-spacing: 0.06em;
+        color: ${CR}0.6); font-family: system-ui, sans-serif; font-weight: 300;
+        transition: all 0.2s; outline: none;
+      }
+      .lgtg:hover { background: rgba(255,248,240,0.85); }
     </style>
     <div class="bd">
+      <button class="lgtg">${lang === "zh" ? "EN" : "中"}</button>
       <span class="t">${lang === "en" ? "Ready for a break?" : "准备好放松一下了吗？"}</span>
       <div class="g">
         <button class="bs">${lang === "en" ? "Start relaxing" : "开始放松"}</button>
@@ -74,6 +86,24 @@ export function gatekeeperUI(theme: GKTheme): void {
     </div>`;
 
   document.documentElement.appendChild(host);
+
+  // ── Lang toggle ───────────────────────────────────────────────────
+  let currentLang = lang;
+  const langBtn  = shadow.querySelector(".lgtg") as HTMLButtonElement;
+  const titleEl  = shadow.querySelector(".t")    as HTMLElement;
+  const startBtn = shadow.querySelector(".bs")   as HTMLButtonElement;
+  const laterBtn = shadow.querySelector(".bl")   as HTMLButtonElement;
+
+  langBtn.addEventListener("click", async () => {
+    currentLang = currentLang === "zh" ? "en" : "zh";
+    langBtn.textContent  = currentLang === "zh" ? "EN" : "中";
+    titleEl.textContent  = currentLang === "en" ? "Ready for a break?" : "准备好放松一下了吗？";
+    startBtn.textContent = currentLang === "en" ? "Start relaxing" : "开始放松";
+    laterBtn.textContent = currentLang === "en" ? "REMIND LATER" : "稍后再说";
+    const d = await chrome.storage.local.get("settings");
+    const s = (d["settings"] as Record<string, unknown> | undefined) ?? {};
+    chrome.storage.local.set({ settings: { ...s, lang: currentLang } }).catch(() => {});
+  });
 
   const remove = () => {
     host.remove();

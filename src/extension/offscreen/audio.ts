@@ -75,7 +75,11 @@ chrome.runtime.onMessage.addListener((msg: BgmMsg) => {
       break;
 
     case "fade_out":
-      fadeOut();
+      if (msg.value && msg.value > 0) {
+        setTimeout(fadeOut, msg.value);
+      } else {
+        fadeOut();
+      }
       break;
 
     case "stop":

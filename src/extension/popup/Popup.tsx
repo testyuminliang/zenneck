@@ -64,6 +64,19 @@ export default function Popup() {
     setLastResetAt(t);
   }
 
+  async function toggleLang() {
+    const newLang = lang === "zh" ? "en" : "zh";
+    setLang(newLang);
+    try {
+      const cfg = JSON.parse(localStorage.getItem("zenneck-config") ?? "{}");
+      cfg.lang = newLang;
+      localStorage.setItem("zenneck-config", JSON.stringify(cfg));
+    } catch { /* ignore */ }
+    const d = await chrome.storage.local.get("settings");
+    const s = (d["settings"] as { themeKey?: string; lang?: string } | undefined) ?? {};
+    await chrome.storage.local.set({ settings: { ...s, lang: newLang } });
+  }
+
   function triggerNow() {
     chrome.runtime.sendMessage({ type: "INJECT_GATEKEEPER" });
     window.close();
@@ -169,7 +182,22 @@ export default function Popup() {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "8px 20px 14px", borderTop: `0.5px solid ${W}0.1)`, display: "flex", justifyContent: "center" }}>
+        <div style={{ padding: "8px 20px 14px", borderTop: `0.5px solid ${W}0.1)`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            onClick={toggleLang}
+            title={lang === "zh" ? "Switch to English" : "切换为中文"}
+            style={{
+              width: 36, height: 36, borderRadius: "50%",
+              background: "rgba(255,248,240,0.55)",
+              border: `0.5px solid ${W}0.2)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", userSelect: "none", transition: "all 0.25s",
+            }}
+          >
+            <span style={{ fontSize: 9, letterSpacing: "0.06em", color: `${CR}0.6)`, fontFamily: "'DM Sans',sans-serif", fontWeight: 300 }}>
+              {lang === "zh" ? "EN" : "中"}
+            </span>
+          </div>
           <button
             onClick={triggerNow}
             style={{ fontSize: 9, letterSpacing: "0.2em", color: `${W}0.55)`, fontFamily: "monospace", background: "none", border: "none", cursor: "pointer", padding: 0 }}
