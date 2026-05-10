@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ZenNeck",
-  "description": "定时提醒颈部休息，冥想完成后自动关闭",
+  "description": "定时提醒颈部休息，冥想完成后自动关闭 | Timed neck rest reminders, auto-close after meditation",
   "version": "1.0.0",
   "permissions": ["tabs", "storage", "alarms", "scripting", "offscreen"],
   "icons": {
