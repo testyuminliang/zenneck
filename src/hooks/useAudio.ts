@@ -202,7 +202,7 @@ export function useAudio() {
   // ── BGM ──────────────────────────────────────────────────────────
   // Uses source.loop = true for sample-accurate seamless looping.
   // No setTimeout scheduling — the Web Audio engine handles the loop point.
-  const startBGM = useCallback(async () => {
+  const startBGM = useCallback(async (offsetSec = 0) => {
     if (bgmRef.current || bgmStartingRef.current || bgmStoppingRef.current) return;
     const audioBuf = customBufRef.current ?? defaultBufRef.current;
     if (!audioBuf) {
@@ -225,13 +225,19 @@ export function useAudio() {
     segGain.connect(masterGain);
 
     const { start: loopStart, end: loopEnd } = detectLoopBounds(audioBuf);
+    const loopDuration = loopEnd - loopStart;
+    // If an offset is given (e.g. to continue from where gatekeeper left off), seek into the loop
+    const startPos = offsetSec > 0 && loopDuration > 0
+      ? loopStart + (offsetSec % loopDuration)
+      : loopStart;
+
     const source = ctx.createBufferSource();
     source.buffer = audioBuf;
     source.loop      = true;
     source.loopStart = loopStart;
     source.loopEnd   = loopEnd;
     source.connect(segGain);
-    source.start(0, loopStart);
+    source.start(0, startPos);
 
     bgmRef.current = { source, segGain, masterGain };
     bgmStartingRef.current = false;

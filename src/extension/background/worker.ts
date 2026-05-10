@@ -1,5 +1,7 @@
 import { gatekeeperUI } from "../shared/gatekeeperUI";
 import type { GKTheme } from "../shared/gatekeeperUI";
+import { completionUI } from "../shared/completionUI";
+import type { CompletionTheme } from "../shared/completionUI";
 
 const DEFAULT_INTERVAL_MS = 30 * 60_000;
 
@@ -60,15 +62,35 @@ async function openZenDirect(themeKey: string): Promise<void> {
   if (tab.id) await chrome.storage.local.set({ zenTabId: tab.id });
 }
 
-async function findTargetTab(): Promise<chrome.tabs.Tab | undefined> {
+async function findTargetTab(excludeTabId?: number): Promise<chrome.tabs.Tab | undefined> {
   // Query all active tabs across all windows — popup being the "lastFocusedWindow"
   // means lastFocusedWindow: true often returns nothing useful when popup is open.
   const active = await chrome.tabs.query({ active: true });
-  const normal = active.find(t => t.url?.match(/^https?:/));
+  const normal = active.find(t => t.url?.match(/^https?:/) && t.id !== excludeTabId);
   if (normal) return normal;
   // Fall back to any open http/https tab (even if not currently active)
   const all = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
-  return all[0];
+  return all.find(t => t.id !== excludeTabId);
+}
+
+async function showCompletion(excludeTabId?: number): Promise<void> {
+  const theme = await getTheme();
+  const tab = await findTargetTab(excludeTabId);
+  if (!tab?.id) return;
+
+  const completionTheme: CompletionTheme = { W: theme.W, CR: theme.CR, bgBase: theme.bgBase, lang: theme.lang };
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "SHOW_COMPLETION", theme: completionTheme });
+  } catch {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: completionUI,
+        args: [completionTheme],
+      });
+    } catch { /* can't inject into this tab */ }
+  }
 }
 
 async function injectGatekeeper(): Promise<void> {
@@ -162,7 +184,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
-  (msg: { type: string; themeKey?: string }, _sender, sendResponse) => {
+  (msg: { type: string; themeKey?: string }, sender, sendResponse) => {
     const done = () => sendResponse({});
 
     if (msg.type === "OPEN_ZEN") {
@@ -180,6 +202,12 @@ chrome.runtime.onMessage.addListener(
         chrome.storage.local.set({ lastResetAt: Date.now() }),
         chrome.storage.local.remove("zenTabId"),
       ]).then(done).catch(done);
+      return true;
+    }
+
+    if (msg.type === "SHOW_COMPLETION") {
+      const senderTabId = sender.tab?.id;
+      showCompletion(senderTabId).then(done).catch(done);
       return true;
     }
   },

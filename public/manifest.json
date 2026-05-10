@@ -29,7 +29,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["zen.html", "assets/*"],
+      "resources": ["zen.html", "assets/*", "audio/*"],
       "matches": ["<all_urls>"]
     }
   ]
