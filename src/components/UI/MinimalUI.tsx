@@ -503,6 +503,10 @@ export default function MinimalUI({
           50%      { opacity: 0.8;  transform: translateY(-1px); }
           60%,100% { opacity: 0.55; transform: translateY(0px); }
         }
+        @keyframes pulse-indicator {
+          0%,100% { opacity: 0.7; }
+          50%     { opacity: 1; }
+        }
       `}</style>
 
       {/* ── NORMAL UI — opacity-controlled for smooth transition ── */}
@@ -1147,7 +1151,16 @@ export default function MinimalUI({
             zIndex: 100,
             pointerEvents: "auto",
             display: "flex",
-            gap: "4px",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "8px",
+          }}
+        >
+          {/* Presets container */}
+          <div
+            style={{
+              display: "flex",
+              gap: "4px",
             background: "rgba(255,248,240,0.55)",
             backdropFilter: "blur(10px)",
             borderRadius: "14px",
@@ -1211,8 +1224,10 @@ export default function MinimalUI({
               height: "48px",
               borderRadius: "10px",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              gap: "3px",
               cursor: "pointer",
               background: "rgba(255,248,240,0.5)",
               border: `1px solid ${W}0.2)`,
@@ -1220,6 +1235,15 @@ export default function MinimalUI({
               userSelect: "none",
             }}
           >
+            <span style={{
+              fontSize: "11px",
+              letterSpacing: "0.04em",
+              fontWeight: 600,
+              fontFamily: "'DM Sans',sans-serif",
+              color: `${CR}0.7)`,
+            }}>
+              {lang === "en" ? "Custom" : "定制"}
+            </span>
             <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
               <line
                 x1="1"
@@ -1273,6 +1297,7 @@ export default function MinimalUI({
                 strokeWidth="1.2"
               />
             </svg>
+          </div>
           </div>
         </div>
 
