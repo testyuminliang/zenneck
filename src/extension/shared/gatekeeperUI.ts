@@ -57,15 +57,15 @@ export function gatekeeperUI(theme: GKTheme): void {
       }
       .bs:hover { opacity: .88; transform: translateY(-1px); }
       .bl {
-        height: 40px; border-radius: 14px;
+        height: 36px; border-radius: 14px;
         background: transparent; border: .5px solid ${W}0.22);
-        cursor: pointer; font-size: 11px; letter-spacing: .2em;
-        color: ${CR}0.4); font-family: monospace;
+        cursor: pointer; font-size: 10px; letter-spacing: .1em;
+        color: ${CR}0.4); font-family: system-ui, sans-serif;
         transition: all .2s; outline: none;
       }
       .bl:hover { background: ${W}0.07); }
       .lgtg {
-        position: absolute; top: 20px; right: 20px;
+        position: absolute; bottom: 1.8rem; left: 1.8rem;
         width: 36px; height: 36px; border-radius: 50%;
         background: rgba(255,248,240,0.55);
         border: 0.5px solid ${W}0.2);
@@ -81,7 +81,8 @@ export function gatekeeperUI(theme: GKTheme): void {
       <span class="t">${lang === "en" ? "Ready for a break?" : "准备好放松一下了吗？"}</span>
       <div class="g">
         <button class="bs">${lang === "en" ? "Start relaxing" : "开始放松"}</button>
-        <button class="bl">${lang === "en" ? "REMIND LATER" : "稍后再说"}</button>
+        <button class="bl" data-action="remind5">${lang === "en" ? "REMIND LATER IN 5 MINUTES" : "稍后提醒我（5分钟）"}</button>
+        <button class="bl" data-action="remindInterval">${lang === "en" ? "REMIND ME IN {interval} MINUTES" : "稍后提醒我（{interval}分钟）"}</button>
       </div>
     </div>`;
 
@@ -92,18 +93,36 @@ export function gatekeeperUI(theme: GKTheme): void {
   const langBtn  = shadow.querySelector(".lgtg") as HTMLButtonElement;
   const titleEl  = shadow.querySelector(".t")    as HTMLElement;
   const startBtn = shadow.querySelector(".bs")   as HTMLButtonElement;
-  const laterBtn = shadow.querySelector(".bl")   as HTMLButtonElement;
+  const remind5Btn = shadow.querySelector("[data-action='remind5']") as HTMLButtonElement;
+  const remindIntervalBtn = shadow.querySelector("[data-action='remindInterval']") as HTMLButtonElement;
+
+  const getIntervalMinutes = async (): Promise<number> => {
+    const d = await chrome.storage.local.get("intervalMs");
+    const ms = (d["intervalMs"] as number | undefined) ?? 30 * 60_000;
+    return Math.round(ms / 60_000);
+  };
+
+  const updateButtonText = async () => {
+    const intervalMin = await getIntervalMinutes();
+    remind5Btn.textContent = currentLang === "en" ? "REMIND LATER IN 5 MINUTES" : "稍后提醒我（5分钟）";
+    remindIntervalBtn.textContent = currentLang === "en" 
+      ? `REMIND ME IN ${intervalMin} MINUTES` 
+      : `稍后提醒我（${intervalMin}分钟）`;
+  };
 
   langBtn.addEventListener("click", async () => {
     currentLang = currentLang === "zh" ? "en" : "zh";
     langBtn.textContent  = currentLang === "zh" ? "EN" : "中";
     titleEl.textContent  = currentLang === "en" ? "Ready for a break?" : "准备好放松一下了吗？";
     startBtn.textContent = currentLang === "en" ? "Start relaxing" : "开始放松";
-    laterBtn.textContent = currentLang === "en" ? "REMIND LATER" : "稍后再说";
+    await updateButtonText();
     const d = await chrome.storage.local.get("settings");
     const s = (d["settings"] as Record<string, unknown> | undefined) ?? {};
     chrome.storage.local.set({ settings: { ...s, lang: currentLang } }).catch(() => {});
   });
+
+  // Initialize button text
+  updateButtonText().catch(() => {});
 
   const remove = () => {
     host.remove();
@@ -120,12 +139,20 @@ export function gatekeeperUI(theme: GKTheme): void {
     chrome.runtime.sendMessage({ type: "OPEN_ZEN", themeKey });
   });
 
-  (shadow.querySelector(".bl") as HTMLButtonElement).addEventListener("click", async () => {
+  remind5Btn.addEventListener("click", async () => {
     remove();
     chrome.runtime.sendMessage({ type: "GK_SNOOZED" }).catch(() => {});
     const d = await chrome.storage.local.get("intervalMs");
     const ms = (d["intervalMs"] as number | undefined) ?? 30 * 60_000;
-    const snoozeMs = Math.min(5 * 60_000, ms);
+    const snoozeMs = 5 * 60_000;
     await chrome.storage.local.set({ lastResetAt: Date.now() - ms + snoozeMs });
+  });
+
+  remindIntervalBtn.addEventListener("click", async () => {
+    remove();
+    chrome.runtime.sendMessage({ type: "GK_SNOOZED" }).catch(() => {});
+    const d = await chrome.storage.local.get("intervalMs");
+    const ms = (d["intervalMs"] as number | undefined) ?? 30 * 60_000;
+    await chrome.storage.local.set({ lastResetAt: Date.now() - ms + ms });
   });
 }
