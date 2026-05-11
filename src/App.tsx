@@ -432,6 +432,13 @@ function App({ onComplete }: { onComplete?: () => void } = {}) {
         onCameraActive={() => setCameraActive(true)}
         onCameraFailed={() => setCameraFailed(true)}
       />
+
+      <footer className="site-footer" aria-label="Site footer">
+        <span>© 2026 ZenNeck. All rights reserved.</span>
+        <a href="/privacy/index.html" target="_blank" rel="noreferrer">
+          Privacy Policy
+        </a>
+      </footer>
     </div>
   );
 }
