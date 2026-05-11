@@ -9,6 +9,17 @@ interface FaceTrackerProps {
   onCameraFailed?: () => void;
 }
 
+const getPublicAssetUrl = (path: string) => {
+  const normalizedPath = path.replace(/^\/+/, "");
+  const runtime = globalThis.chrome?.runtime;
+
+  if (runtime?.getURL) {
+    return runtime.getURL(normalizedPath);
+  }
+
+  return new URL(`/${normalizedPath}`, window.location.origin).href;
+};
+
 const FaceTracker = forwardRef<any, FaceTrackerProps>(
   ({ onHeadRotationChange, onCameraActive, onCameraFailed }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -35,12 +46,14 @@ const FaceTracker = forwardRef<any, FaceTrackerProps>(
     useEffect(() => {
       const initFaceTracking = async () => {
         try {
-          const wasmPath = new URL("/assets/mediapipe/wasm", window.location.href).href;
+          const wasmPath = getPublicAssetUrl("assets/mediapipe/wasm");
+          const modelPath = getPublicAssetUrl(
+            "assets/mediapipe/models/face_landmarker.task",
+          );
           const vision = await FilesetResolver.forVisionTasks(wasmPath);
           const landmarker = await FaceLandmarker.createFromOptions(vision, {
             baseOptions: {
-              modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+              modelAssetPath: modelPath,
             },
             runningMode: "VIDEO",
             numFaces: 1,
