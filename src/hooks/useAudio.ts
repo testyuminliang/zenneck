@@ -61,6 +61,15 @@ function detectLoopBounds(buffer: AudioBuffer, threshold = 0.0005): { start: num
   return { start: s / sr, end: (e + 1) / sr };
 }
 
+// ── Extension BGM routing ─────────────────────────────────────────
+// When running inside the extension (chrome.runtime available), BGM is managed
+// by the offscreen document via the background service worker. SFX/cues stay local.
+const IS_EXT = typeof chrome !== "undefined" && typeof chrome.runtime?.sendMessage === "function";
+
+function extBgmCmd(cmd: string, value?: number): void {
+  chrome.runtime.sendMessage({ type: "ZEN_BGM_CMD", cmd, value }).catch(() => {});
+}
+
 // ── Hook ──────────────────────────────────────────────────────────
 type BgmNodes = {
   source: AudioBufferSourceNode;
@@ -202,7 +211,8 @@ export function useAudio() {
   // ── BGM ──────────────────────────────────────────────────────────
   // Uses source.loop = true for sample-accurate seamless looping.
   // No setTimeout scheduling — the Web Audio engine handles the loop point.
-  const startBGM = useCallback(async () => {
+  const startBGM = useCallback(async (offsetSec = 0) => {
+    if (IS_EXT) { extBgmCmd("play"); return; }
     if (bgmRef.current || bgmStartingRef.current || bgmStoppingRef.current) return;
     const audioBuf = customBufRef.current ?? defaultBufRef.current;
     if (!audioBuf) {
@@ -225,19 +235,26 @@ export function useAudio() {
     segGain.connect(masterGain);
 
     const { start: loopStart, end: loopEnd } = detectLoopBounds(audioBuf);
+    const loopDuration = loopEnd - loopStart;
+    // If an offset is given (e.g. to continue from where gatekeeper left off), seek into the loop
+    const startPos = offsetSec > 0 && loopDuration > 0
+      ? loopStart + (offsetSec % loopDuration)
+      : loopStart;
+
     const source = ctx.createBufferSource();
     source.buffer = audioBuf;
     source.loop      = true;
     source.loopStart = loopStart;
     source.loopEnd   = loopEnd;
     source.connect(segGain);
-    source.start(0, loopStart);
+    source.start(0, startPos);
 
     bgmRef.current = { source, segGain, masterGain };
     bgmStartingRef.current = false;
   }, []);
 
   const stopBGM = useCallback(() => {
+    if (IS_EXT) { extBgmCmd("fade_out"); return; }
     bgmPendingRef.current = false;
     const nodes = bgmRef.current;
     if (!nodes) return;
@@ -258,6 +275,7 @@ export function useAudio() {
   const loadCustomBgm = useCallback(async (file: File): Promise<string> => {
     const ab = await file.arrayBuffer();
     await idbSave(ab.slice(0));
+    if (IS_EXT) { extBgmCmd("reload"); return file.name; }
     customBufRef.current = await getCtx().decodeAudioData(ab);
     if (bgmRef.current) { stopBGM(); setTimeout(startBGM, 2900); }
     return file.name;
@@ -266,6 +284,7 @@ export function useAudio() {
   const clearCustomBgm = useCallback(async () => {
     customBufRef.current = null;
     await idbDelete();
+    if (IS_EXT) { extBgmCmd("reload"); return; }
     if (!defaultBufRef.current) {
       try {
         const res = await fetch("/audio/default-bgm.mp3");
@@ -375,6 +394,7 @@ export function useAudio() {
   }, []);
 
   const setBgmVolume = useCallback((v: number) => {
+    if (IS_EXT) { extBgmCmd("volume", v); return; }
     const nodes = bgmRef.current;
     if (nodes) nodes.masterGain.gain.setTargetAtTime(v, getCtx().currentTime, 0.05);
   }, []);

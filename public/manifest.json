@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "ZenNeck",
+  "description": "定时提醒颈部休息，冥想完成后自动关闭 | Timed neck rest reminders, auto-close after meditation",
+  "version": "1.0.0",
+  "permissions": ["tabs", "storage", "alarms", "scripting", "offscreen"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background/worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/overlay.js"],
+      "type": "module"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "zen.html",
+        "assets/*",
+        "assets/mediapipe/wasm/*",
+        "assets/mediapipe/models/*",
+        "audio/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

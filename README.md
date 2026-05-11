@@ -163,4 +163,7 @@ Tested on Chrome 90+, Firefox 88+, Safari 15+, Edge 90+.
 
 ## License
 
-MIT
+Copyright © 2026 Minliang Yu. All rights reserved.
+
+This project is proprietary and is not licensed for open-source redistribution,
+modification, or reuse without explicit written permission.

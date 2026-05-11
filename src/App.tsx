@@ -28,7 +28,7 @@ const DEFAULT_CONFIG: CustomConfig = {
   voiceVolume: 0.75,
 };
 
-function App() {
+function App({ onComplete }: { onComplete?: () => void } = {}) {
   const [headRotation, setHeadRotation] = useState<HeadRotation>({
     yaw: 0,
     pitch: 0,
@@ -50,9 +50,18 @@ function App() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
 
-  // Persist config changes to localStorage
+  // Persist config changes to localStorage; also keep chrome.storage.local in sync
+  // so the background worker uses the correct theme for the next alarm.
   useEffect(() => {
     localStorage.setItem("zenneck-config", JSON.stringify(customConfig));
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const themeKey = customConfig.themeKey ?? "terracotta";
+      const lang = customConfig.lang ?? "zh";
+      chrome.storage.local.get("settings").then(d => {
+        const s = (d["settings"] as object | undefined) ?? {};
+        chrome.storage.local.set({ settings: { ...s, themeKey, lang } });
+      }).catch(() => {});
+    }
   }, [customConfig]);
 
   const theme = getTheme(customConfig.themeKey);
@@ -99,8 +108,9 @@ function App() {
 
   // BGM：bgmEnabled 时淡入（自由/引导模式均生效），否则淡出
   useEffect(() => {
-    if (customConfig.bgmEnabled) startBGM();
-    else stopBGM();
+    if (customConfig.bgmEnabled) {
+      startBGM(0);
+    } else stopBGM();
     return () => stopBGM();
   }, [customConfig.bgmEnabled, startBGM, stopBGM]);
 
@@ -110,7 +120,9 @@ function App() {
     if (!cameraActive || audioUnlockedRef.current) return;
     audioUnlockedRef.current = true;
     resumeCtx().then(() => {
-      if (customConfig.bgmEnabled) startBGM();
+      if (customConfig.bgmEnabled) {
+        startBGM(0);
+      }
     });
   }, [cameraActive]);
 
@@ -250,6 +262,7 @@ function App() {
       resetCompleted();
       setGuidedMode(false);
       setCompletionPhase("emerging");
+      onComplete?.();
     }, 5500);
     const t3 = setTimeout(() => setCompletionPhase("idle"), 11000);
     return () => [t1, t2, t3].forEach(clearTimeout);
@@ -272,7 +285,9 @@ function App() {
     if (audioUnlockedRef.current) return;
     audioUnlockedRef.current = true;
     resumeCtx().then(() => {
-      if (customConfig.bgmEnabled) startBGM();
+      if (customConfig.bgmEnabled) {
+        startBGM(0);
+      }
     });
   }
 
@@ -343,7 +358,7 @@ function App() {
           position: "fixed",
           inset: 0,
           zIndex: 450,
-          background: "#f5ede4",
+          background: theme.bgBase,
           opacity:
             completionPhase === "clearing"
               ? 0.92
@@ -391,7 +406,7 @@ function App() {
           style={{
             fontSize: "22px",
             letterSpacing: "0.22em",
-            color: "rgba(154,88,64,0.82)",
+            color: `${theme.CR}0.82)`,
             fontFamily: "'DM Serif Display', serif",
             fontStyle: "italic",
           }}
@@ -402,7 +417,7 @@ function App() {
           style={{
             fontSize: "8px",
             letterSpacing: "0.4em",
-            color: "rgba(154,88,64,0.4)",
+            color: `${theme.CR}0.4)`,
             fontFamily: "monospace",
           }}
         >
@@ -416,6 +431,13 @@ function App() {
         onCameraActive={() => setCameraActive(true)}
         onCameraFailed={() => setCameraFailed(true)}
       />
+
+      <footer className="site-footer" aria-label="Site footer">
+        <span>© 2026 ZenNeck. All rights reserved.</span>
+        <a href="/privacy/index.html" target="_blank" rel="noreferrer">
+          Privacy Policy
+        </a>
+      </footer>
     </div>
   );
 }

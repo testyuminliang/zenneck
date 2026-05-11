@@ -5,10 +5,14 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import './index.css'
 import App from './App.tsx'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-    <Analytics />
-    <SpeedInsights />
-  </StrictMode>,
-)
+if (window.location.pathname === '/privacy' || window.location.pathname === '/privacy/') {
+  window.location.replace('/privacy/index.html')
+} else {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+      <Analytics />
+      <SpeedInsights />
+    </StrictMode>,
+  )
+}

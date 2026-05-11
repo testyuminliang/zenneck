@@ -940,7 +940,7 @@ export default function MinimalUI({
         <div
           style={{
             position: "fixed",
-            bottom: "14px",
+            bottom: guidedMode ? "3.35rem" : "2.9rem",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 100,
